@@ -44,3 +44,7 @@ Go lang for backend
 Authentication:
     https://developers.google.com/identity/gsi/web/guides/overview
     (chrome only)https://developers.google.com/privacy-sandbox/cookies/fedcm
+
+
+Future considerations:
+ - look at using next.js

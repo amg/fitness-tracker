@@ -1,7 +1,15 @@
+import { GoogleLogin } from '@react-oauth/google';
+
 import logo from './logo.png';
 import './App.css';
 
 function App() {
+  const responseMessage = (response) => {
+    console.log(response);
+  };
+  const errorMessage = (error) => {
+    console.log(error);
+  };
   return (
     <div className="App">
       <header className="App-header">
@@ -18,6 +26,12 @@ function App() {
           Learn React
         </a>
       </header>
+      <div>
+        <h2>React Google Login</h2>
+        <br />
+        <br />
+        <GoogleLogin onSuccess={responseMessage} onError={errorMessage} />
+      </div>
     </div>
   );
 }
