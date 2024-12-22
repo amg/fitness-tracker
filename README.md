@@ -48,3 +48,7 @@ Authentication:
 
 Future considerations:
  - look at using next.js
+
+ Docs:
+    ReactJS
+     - https://react.dev/learn/state-as-a-snapshot
