@@ -1,34 +1,36 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { googleLogout, useGoogleLogin } from '@react-oauth/google';
-import axios from 'axios';
 
 function App() {
-    const [ user, setUser ] = useState([]);
-    const [ profile, setProfile ] = useState([]);
+    const [profile, setProfile] = useState(null);
 
-    const login = useGoogleLogin({
-        onSuccess: (codeResponse) => setUser(codeResponse),
-        onError: (error) => console.log('Login Failed:', error)
-    });
-
-    useEffect(
-        () => {
-            if (user) {
-                axios
-                    .get(`https://www.googleapis.com/oauth2/v1/userinfo?access_token=${user.access_token}`, {
-                        headers: {
-                            Authorization: `Bearer ${user.access_token}`,
-                            Accept: 'application/json'
-                        }
-                    })
-                    .then((res) => {
-                        setProfile(res.data);
-                    })
-                    .catch((err) => console.log(err));
-            }
+    const googleLogin = useGoogleLogin({
+        onSuccess: (codeResponse) => {
+            // Send the authorization code to the backend server
+            
+            // TODO: update this to allow easier customisation
+            fetch('http://localhost:8080/api/auth/google', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                mode: "cors",
+                body: JSON.stringify({ code: codeResponse.code }),
+            })
+                .then(response => response.json())
+                .then(data => {
+                    setProfile(data);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
         },
-        [ user ]
-    );
+        onError: () => {
+            // Handle login errors here
+            console.error('Google login failed');
+        },
+        flow: 'auth-code',
+    });
 
     // log out function to log the user out of google and set the profile array to null
     const logOut = () => {
@@ -52,7 +54,7 @@ function App() {
                     <button onClick={logOut}>Log out</button>
                 </div>
             ) : (
-                <button onClick={() => login()}>Sign in with Google 🚀 </button>
+                <button onClick={() => googleLogin()}>Sign in with Google 🚀 </button>
             )}
         </div>
     );
