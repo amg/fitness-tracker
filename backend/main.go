@@ -14,6 +14,11 @@ import (
 	"golang.org/x/oauth2/google"
 )
 
+var googleClientId string
+var googleClientSecret string
+var googleClientCallbackUrl string
+var serverPort string
+
 func main() {
 
 	// for now a simple load of credentials
@@ -23,21 +28,24 @@ func main() {
 		log.Fatal(".env file failed to load!")
 	}
 
-	if os.Getenv("CLIENT_ID") == "" || os.Getenv("CLIENT_SECRET") == "" || os.Getenv("CLIENT_CALLBACK_URL") == "" {
+	googleClientId = os.Getenv("CLIENT_ID")
+	googleClientSecret = os.Getenv("CLIENT_SECRET")
+	googleClientCallbackUrl = os.Getenv("CLIENT_CALLBACK_URL")
+	if googleClientId == "" || googleClientSecret == "" || googleClientCallbackUrl == "" {
 		log.Fatal("Environment variables (CLIENT_ID, CLIENT_SECRET, CLIENT_CALLBACK_URL) are required")
 	}
 
-	httpPort := os.Getenv("PORT")
-	if httpPort == "" {
-		httpPort = "8080"
+	serverPort = os.Getenv("PORT")
+	if serverPort == "" {
+		serverPort = "8080"
 	}
 
-	fmt.Printf("Starting backend on the port: %v", httpPort)
+	fmt.Printf("Starting backend on the port: %v", serverPort)
 	// starting the server that will listen forever on the port
 	http.HandleFunc("/", rootHandler)
 	http.Handle("/api/auth/google", corsHandler(googleAuthHandler))
 
-	log.Fatal(http.ListenAndServe(":"+httpPort, nil))
+	log.Fatal(http.ListenAndServe(":"+serverPort, nil))
 }
 
 func corsHandler(h http.HandlerFunc) http.HandlerFunc {
@@ -80,8 +88,8 @@ func googleAuthHandler(responseWriter http.ResponseWriter, request *http.Request
 	var googleOauthConfig = &oauth2.Config{
 		// port is of the ReactJS app
 		RedirectURL:  fmt.Sprintf("http://localhost:%v", 3000),
-		ClientID:     os.Getenv("CLIENT_ID"),
-		ClientSecret: os.Getenv("CLIENT_SECRET"),
+		ClientID:     googleClientId,
+		ClientSecret: googleClientSecret,
 		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email"},
 		Endpoint:     google.Endpoint,
 	}
