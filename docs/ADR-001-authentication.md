@@ -55,3 +55,7 @@ sequenceDiagram
     Google->>Backend: not authorized
     Backend->>Web: logged out
 :::
+
+
+**Refs:**
+    https://stackoverflow.com/questions/10703532/whats-the-point-of-refresh-token

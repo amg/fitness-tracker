@@ -52,3 +52,7 @@ Future considerations:
  Docs:
     ReactJS
      - https://react.dev/learn/state-as-a-snapshot
+    OAuth
+     - https://auth0.com/blog/critical-vulnerabilities-in-json-web-token-libraries/
+    OAuth Go lang
+     - https://github.com/golang-jwt/jwt?tab=readme-ov-file
