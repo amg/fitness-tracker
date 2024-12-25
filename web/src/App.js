@@ -1,20 +1,24 @@
 import React, { useState } from 'react';
 import { googleLogout, useGoogleLogin } from '@react-oauth/google';
 
+const apiBaseUrl = "http://127.0.0.1:8080"
+
 function App() {
     const [profile, setProfile] = useState(null);
+    const [data, setData] = useState(null);
 
     const googleLogin = useGoogleLogin({
         onSuccess: (codeResponse) => {
             // Send the authorization code to the backend server
             
             // TODO: update this to allow easier customisation
-            fetch('http://localhost:8080/api/auth/google', {
+            fetch(apiBaseUrl + '/api/auth/google', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 mode: "cors",
+                credentials: "include",
                 body: JSON.stringify({ code: codeResponse.code }),
             })
                 .then(response => response.json())
@@ -31,6 +35,25 @@ function App() {
         },
         flow: 'auth-code',
     });
+
+    const authenticatedCall = () => {
+        fetch(apiBaseUrl + '/authenticated', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            mode: "cors",
+            credentials: "include",
+        })
+            .then(response => response.json())
+            .then(response => 
+                setData(response)
+            )
+            .catch(error => {
+                setData({error: "Unauthorised"})
+                console.error('Error:', error);
+            });
+    }
 
     // log out function to log the user out of google and set the profile array to null
     const logOut = () => {
@@ -54,8 +77,17 @@ function App() {
                     <button onClick={logOut}>Log out</button>
                 </div>
             ) : (
-                <button onClick={() => googleLogin()}>Sign in with Google 🚀 </button>
+                <>
+                    <button onClick={() => googleLogin()}>Sign in with Google 🚀 </button>
+                    <button onClick={() => authenticatedCall()}>Make authenticated call</button>
+                </>
             )}
+            {data ? (
+                <div> {JSON.stringify(data)} </div>
+            ) : (
+                <div>No data</div>
+            )
+            }
         </div>
     );
 }

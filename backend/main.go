@@ -17,10 +17,13 @@ import (
 	"golang.org/x/oauth2/google"
 )
 
+const HEADER_JWT = "jwt_token"
+
+var localhost string
 var googleClientId string
 var googleClientSecret string
 var googleClientCallbackUrl string
-var serverPort string
+var backendPort string
 
 var filePathKeyPrivate string
 var filePathKeyPublic string
@@ -40,34 +43,37 @@ func main() {
 
 	filePathKeyPrivate = os.Getenv("FILE_KEY_PRIVATE")
 	filePathKeyPublic = os.Getenv("FILE_KEY_PUBLIC")
+	localhost = os.Getenv("LOCALHOST")
 
 	if googleClientId == "" || googleClientSecret == "" ||
-		googleClientCallbackUrl == "" || filePathKeyPrivate == "" || filePathKeyPublic == "" {
+		googleClientCallbackUrl == "" || filePathKeyPrivate == "" || filePathKeyPublic == "" || localhost == "" {
 		log.Fatal(`Environment variables (CLIENT_ID, CLIENT_SECRET,
          CLIENT_CALLBACK_URL, FILE_KEY_PRIVATE, FILE_KEY_PUBLIC) are required`)
 	}
 
-	serverPort = os.Getenv("PORT")
-	if serverPort == "" {
-		serverPort = "8080"
+	backendPort = os.Getenv("BACKEND_PORT")
+	if backendPort == "" {
+		backendPort = "8080"
 	}
 
-	fmt.Printf("Starting backend on the port: %v", serverPort)
+	fmt.Printf("Starting backend on the port: %v", backendPort)
 	// starting the server that will listen forever on the port
 	http.HandleFunc("/", rootHandler)
 	http.Handle("/api/auth/google", corsHandler(googleAuthCodeHandler))
+	http.HandleFunc("/authenticated", corsHandler(authenticatedCallHandler))
 
-	log.Fatal(http.ListenAndServe(":"+serverPort, nil))
+	log.Fatal(http.ListenAndServe(":"+backendPort, nil))
 }
 
 func corsHandler(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", os.Getenv("WEB_HOST"))
+		w.Header().Add("Access-Control-Allow-Headers", "Content-Type, Origin, Accept, googleTokens")
+		w.Header().Add("Access-Control-Allow-Methods", "GET, POST,OPTIONS")
+		w.Header().Add("Access-Control-Allow-Credentials", "true")
 		w.Header().Add("Vary", "Origin")
 		w.Header().Add("Vary", "Access-Control-Request-Method")
 		w.Header().Add("Vary", "Access-Control-Request-Headers")
-		w.Header().Add("Access-Control-Allow-Headers", "Content-Type, Origin, Accept, tokens")
-		w.Header().Add("Access-Control-Allow-Methods", "GET, POST,OPTIONS")
 
 		if r.Method == "OPTIONS" {
 			return
@@ -90,7 +96,54 @@ func rootHandler(responseWriter http.ResponseWriter, request *http.Request) {
 	}
 }
 
-// Google one-off auth token provided to the server to exchange for the tokens pair
+func authenticatedCallHandler(responseWriter http.ResponseWriter, request *http.Request) {
+	// testing recovering from panic
+	defer func() {
+		if err := recover(); err != nil {
+			switch t := err.(type) {
+			case string:
+				http.Error(responseWriter, t, http.StatusUnauthorized)
+			default:
+				http.Error(responseWriter, "Unspecified panic", http.StatusUnauthorized)
+			}
+		}
+	}()
+
+	jwtCookie, err := request.Cookie(HEADER_JWT)
+	if err != nil {
+		log.Printf("Token is missing: %v\n", err)
+		http.Error(responseWriter, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	cryptoPublicKey := LoadRSAPublicKeyFromDisk(fmt.Sprintf("./%s", filePathKeyPublic))
+
+	parsed, err := jwt.Parse(jwtCookie.Value, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+
+		return cryptoPublicKey, nil
+	})
+
+	if !parsed.Valid {
+		log.Printf("Token verification failed: %v\n", err)
+		http.Error(responseWriter, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	// why do this not work while Parse above does?
+	// err = jwt.SigningMethodRS256.Verify(strings.Join(parts[0:2], "."), ([]byte)(parts[2]), cryptoPublicKey)
+	// if err != nil {
+	// 	log.Printf("Token verification failed: %v\n", err)
+	// 	http.Error(responseWriter, err.Error(), http.StatusUnauthorized)
+	// 	return
+	// }
+	a, _ := json.Marshal(map[string]int{"foo": 1, "bar": 2, "baz": 3})
+	responseWriter.Write(a)
+}
+
+// Google one-off auth token provided to the server to exchange for the googleTokens pair
 type GoogleAuthCodeInput struct {
 	Code string `json:"code"`
 }
@@ -117,26 +170,46 @@ func googleAuthCodeHandler(responseWriter http.ResponseWriter, request *http.Req
 		http.Error(responseWriter, err.Error(), http.StatusBadRequest)
 		return
 	}
-	tokens, err := googleOneOffTokenExchange(authCode)
+	googleTokens, err := googleOneOffTokenExchange(authCode)
 	if err != nil {
 		log.Printf("Google token exchange for session failed: %v\n", err)
 		http.Error(responseWriter, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// TODO: generate JWT token and a refresh token to handle session on the server
-	//  and keep it independent from the SSO provider
-	// This also allows server to have finer control over data and expiration
-	jwt.New(&jwt.SigningMethodRSA{})
+	info, err := googleGetProfileInfo(googleTokens)
+	if err != nil {
+		log.Printf("Google profile read failed: %v\n", err)
+		http.Error(responseWriter, err.Error(), http.StatusBadRequest)
+		return
+	}
+	log.Printf("Customer's info: %s\n", *info)
+	//TODO: add info to DB along with refresh token
 
-	http.SetCookie(responseWriter, &http.Cookie{Name: "gtoken", Value: tokens, Expires: tokens.Expiry})
-	json.NewEncoder(responseWriter).Encode(SessionTokenOutput{Token: tokens.AccessToken})
+	// generating only jwt token for now
+	serverJWTToken, err := jwtWithCustomClaims(filePathKeyPrivate, time.Now())
+	if err != nil {
+		log.Printf("JWT server token generated: %v\n", err)
+		http.Error(responseWriter, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// set http-only jwk token cookie
+	http.SetCookie(responseWriter, &http.Cookie{
+		Name:     HEADER_JWT,
+		Value:    serverJWTToken,
+		Domain:   localhost,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false, //NOTE: for testing purposes only
+	})
+	responseWriter.Write([]byte(""))
 }
 
-func userInfoHandler(responseWriter http.ResponseWriter, request *http.Request) {
-	// err := verifyrequest.Header("X-Auth-Token")
-	// request.Cookie("gtoken")
-}
+// func userInfoHandler(responseWriter http.ResponseWriter, request *http.Request) {
+// 	// err := verifyrequest.Header("X-Auth-Token")
+// 	// request.Cookie("gtoken")
+// }
 
 /**
 * Handle one-off token exchange for session/refresh pair
@@ -144,21 +217,21 @@ func userInfoHandler(responseWriter http.ResponseWriter, request *http.Request) 
 func googleOneOffTokenExchange(authCode GoogleAuthCodeInput) (token *oauth2.Token, err error) {
 	var googleOauthConfig = &oauth2.Config{
 		// port is of the ReactJS app
-		RedirectURL:  fmt.Sprintf("http://localhost:%v", 3000),
+		RedirectURL:  fmt.Sprintf("http://%s:%v", localhost, 3000),
 		ClientID:     googleClientId,
 		ClientSecret: googleClientSecret,
 		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email"},
 		Endpoint:     google.Endpoint,
 	}
 
-	// Use code to get tokens and get user info from Google.
-	tokens, err := googleOauthConfig.Exchange(context.Background(), authCode.Code)
+	// Use code to get googleTokens and get user info from Google.
+	googleTokens, err := googleOauthConfig.Exchange(context.Background(), authCode.Code)
 	if err != nil {
 		log.Printf("Exchange of authcode (%v) failed: %v\n", authCode.Code, err)
 		return nil, err
 	}
 
-	return tokens, nil
+	return googleTokens, nil
 }
 
 type GoogleProfileInfo struct {
@@ -167,8 +240,8 @@ type GoogleProfileInfo struct {
 
 const oauthGoogleUrlAPI = "https://www.googleapis.com/oauth2/v2/userinfo?access_token="
 
-func googleGetProfileInfo(tokens *oauth2.Token) (profileInfo *GoogleProfileInfo, err error) {
-	response, err := http.Get(oauthGoogleUrlAPI + tokens.AccessToken)
+func googleGetProfileInfo(googleTokens *oauth2.Token) (profileInfo *GoogleProfileInfo, err error) {
+	response, err := http.Get(oauthGoogleUrlAPI + googleTokens.AccessToken)
 	if err != nil {
 		log.Println("Getting profile data failed")
 		return nil, err
@@ -179,9 +252,7 @@ func googleGetProfileInfo(tokens *oauth2.Token) (profileInfo *GoogleProfileInfo,
 		log.Println("Reading profile data failed")
 		return nil, err
 	}
-	// responseWriter.Header().Add("Content-Type", "application/json")
-	// just sending bytes
-	log.Printf("Got content:\n %s\n", contents)
+
 	var googleProfileInfo GoogleProfileInfo
 	err = json.Unmarshal(contents, &googleProfileInfo)
 	if err != nil {
@@ -193,8 +264,8 @@ func googleGetProfileInfo(tokens *oauth2.Token) (profileInfo *GoogleProfileInfo,
 
 // Create a token
 // Ref: https://github.com/golang-jwt/jwt/blob/main/example_test.go
-func jwtWithCustomClaims() {
-	cryptoKey := LoadECPrivateKeyFromDisk(fmt.Sprintf("./%s", filePathKeyPrivate))
+func jwtWithCustomClaims(filePathKeyPrivate string, now time.Time) (string, error) {
+	cryptoKey := LoadRSAPrivateKeyFromDisk(fmt.Sprintf("./%s", filePathKeyPrivate))
 
 	type MyCustomClaims struct {
 		Foo string `json:"foo"`
@@ -206,9 +277,10 @@ func jwtWithCustomClaims() {
 		"bar",
 		jwt.RegisteredClaims{
 			// A usual scenario is to set the expiration time relative to the current time
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			NotBefore: jwt.NewNumericDate(time.Now()),
+			// For now it's 1 minute for testing purposes
+			ExpiresAt: jwt.NewNumericDate(now.Add(30 * time.Minute)),
+			IssuedAt:  jwt.NewNumericDate(now),
+			NotBefore: jwt.NewNumericDate(now),
 			Issuer:    "test",
 			Subject:   "somebody",
 			ID:        "1",
@@ -216,25 +288,10 @@ func jwtWithCustomClaims() {
 		},
 	}
 
-	fmt.Printf("foo: %v\n", claims.Foo)
-
-	// Create claims while leaving out some of the optional fields
-	claims = MyCustomClaims{
-		"bar",
-		jwt.RegisteredClaims{
-			// Also fixed dates can be used for the NumericDate
-			ExpiresAt: jwt.NewNumericDate(time.Unix(1516239022, 0)),
-			Issuer:    "test",
-		},
-	}
-
 	token := jwt.NewWithClaims(
 		jwt.SigningMethodRS256,
 		claims,
 	)
-	ss, err := token.SignedString(cryptoKey)
-	fmt.Println(ss, err)
 
-	// Output: foo: bar
-	// eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmb28iOiJiYXIiLCJpc3MiOiJ0ZXN0IiwiZXhwIjoxNTE2MjM5MDIyfQ.xVuY2FZ_MRXMIEgVQ7J-TFtaucVFRXUzHm9LmV41goM <nil>
+	return token.SignedString(cryptoKey)
 }
