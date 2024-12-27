@@ -1,0 +1,19 @@
+services:
+  api:
+    env_file:
+      - ./.env.development
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+  frontend:
+    env_file:
+      - ./.env.development
+    environment:
+      - API_HOST=value
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"

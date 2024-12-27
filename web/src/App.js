@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { googleLogout, useGoogleLogin } from '@react-oauth/google';
 
-const apiBaseUrl = "http://127.0.0.1:8080"
+const apiBaseUrl = window.env.API_HOST
 
 function App() {
     const [profile, setProfile] = useState(null);

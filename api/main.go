@@ -12,7 +12,6 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 
-	"github.com/joho/godotenv"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )
@@ -29,17 +28,9 @@ var filePathKeyPrivate string
 var filePathKeyPublic string
 
 func main() {
-
-	// for now a simple load of credentials
-	log.Println("Loading env variables")
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal(".env file failed to load!")
-	}
-
-	googleClientId = os.Getenv("CLIENT_ID")
-	googleClientSecret = os.Getenv("CLIENT_SECRET")
-	googleClientCallbackUrl = os.Getenv("CLIENT_CALLBACK_URL")
+	googleClientId = os.Getenv("GOOGLE_CLIENT_ID")
+	googleClientSecret = os.Getenv("GOOGLE_CLIENT_SECRET")
+	googleClientCallbackUrl = os.Getenv("GOOGLE_CLIENT_CALLBACK_URL")
 
 	filePathKeyPrivate = os.Getenv("FILE_KEY_PRIVATE")
 	filePathKeyPublic = os.Getenv("FILE_KEY_PUBLIC")
@@ -47,13 +38,13 @@ func main() {
 
 	if googleClientId == "" || googleClientSecret == "" ||
 		googleClientCallbackUrl == "" || filePathKeyPrivate == "" || filePathKeyPublic == "" || localhost == "" {
-		log.Fatal(`Environment variables (CLIENT_ID, CLIENT_SECRET,
-         CLIENT_CALLBACK_URL, FILE_KEY_PRIVATE, FILE_KEY_PUBLIC) are required`)
+		log.Fatal(`Environment variables (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
+         GOOGLE_CLIENT_CALLBACK_URL, FILE_KEY_PRIVATE, FILE_KEY_PUBLIC) are required`)
 	}
 
-	backendPort = os.Getenv("BACKEND_PORT")
+	backendPort = os.Getenv("API_PORT")
 	if backendPort == "" {
-		backendPort = "8080"
+		log.Fatal(`Environment variable API_PORT is not defined`)
 	}
 
 	fmt.Printf("Starting backend on the port: %v", backendPort)
