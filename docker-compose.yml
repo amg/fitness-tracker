@@ -1,19 +1,19 @@
 services:
   api:
     env_file:
-      - ./.env.development
+      - ${ENV_PATH}
     build:
       context: ./api
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
+    # image: "gcr.io/${GOOGLE_PROJECT_ID}/api" 
   frontend:
     env_file:
-      - ./.env.development
-    environment:
-      - API_HOST=value
+      - ${ENV_PATH}
     build:
       context: ./web
       dockerfile: Dockerfile
+    # image: "gcr.io/${GOOGLE_PROJECT_ID}/web" 
     ports:
       - "3000:3000"

@@ -10,12 +10,8 @@ Simple dockerised react app
  - frontend
     ReactJS website
 
-Run command below to recreate container and pass in args to build script so they are accessible in Dockerfile.
-For some reason `docker compose` doesn't auto pass `.env` to Dockerfiles declared.
-`env_file` declaration passes env to the container itself BUT not to the build scripts.
-
-Command:
-`. ./.env.development && docker compose build --build-arg API_HOST="$API_HOST" --progress=plain --no-cache && docker compose --env-file ./.env.development up`
+Run command below to recreate container:
+`docker compose --env-file ./.env.development build --progress=plain --no-cache && docker compose --env-file ./.env.development up`
 
 Run existing container:
 `docker compose --env-file ./.env.development up`
