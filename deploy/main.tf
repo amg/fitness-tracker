@@ -29,20 +29,6 @@ resource "google_cloud_run_service" "web" {
   }
 }
 
-resource "google_cloud_run_domain_mapping" "web-domain-mapping" {
-  location = var.region
-  name     = "fitnesstracker.alexlearningcloud.dev/web"
-
-  metadata {
-    namespace = var.project_id
-  }
-
-  spec {
-    route_name = google_cloud_run_service.web.name
-  }
-}
-
-
 # Deploy api to Cloud Run
 resource "google_cloud_run_service" "api" {
   name     = "api"
@@ -60,19 +46,6 @@ resource "google_cloud_run_service" "api" {
   }
 }
 
-resource "google_cloud_run_domain_mapping" "api-domain-mapping" {
-  location = var.region
-  name     = "fitnesstracker.alexlearningcloud.dev/api"
-
-  metadata {
-    namespace = var.project_id
-  }
-
-  spec {
-    route_name = google_cloud_run_service.api.name
-  }
-}
-
 # Create public access
 data "google_iam_policy" "noauth" {
   binding {
@@ -84,9 +57,17 @@ data "google_iam_policy" "noauth" {
 }
 
 # Enable public access on Cloud Run service
-resource "google_cloud_run_service_iam_policy" "noauth" {
+resource "google_cloud_run_service_iam_policy" "web_noauth" {
   location    = google_cloud_run_service.web.location
   project     = google_cloud_run_service.web.project
   service     = google_cloud_run_service.web.name
+  policy_data = data.google_iam_policy.noauth.policy_data
+}
+
+# Enable public access on Cloud Run service
+resource "google_cloud_run_service_iam_policy" "api_noauth" {
+  location    = google_cloud_run_service.api.location
+  project     = google_cloud_run_service.api.project
+  service     = google_cloud_run_service.api.name
   policy_data = data.google_iam_policy.noauth.policy_data
 }

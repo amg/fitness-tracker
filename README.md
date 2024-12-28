@@ -69,22 +69,22 @@ Future considerations:
     ReactJS website
 
 Run command below to recreate container:
-`docker compose --env-file ./.env.development build --progress=plain --no-cache && docker compose --env-file ./.env.development up`
+`. ./.env.development && docker compose build --progress=plain --no-cache && docker compose up`
 
 Run existing container:
-`docker compose --env-file ./.env.development up`
+`. ./.env.development && docker compose up`
 
 --------------
 
 IMPORTANT: gcloud dosen't like images built on M1 so have to use `buildx bake` instead
-`eval $(sed -e '/^#/d' -e 's/^/export /' -e 's/$/;/' .env.development) && docker buildx bake`
+`. ./.env.staging && docker buildx bake`
 use ` --print` for dry run
 
 Pushing the image to google registry:
 https://cloud.google.com/artifact-registry/docs/docker/pushing-and-pulling
 
 `gcloud auth configure-docker`
-`docker compose --env-file ./.env.development push`
+`. ./.env.staging && docker compose push`
 
 Inspect manifest: `docker manifest inspect gcr.io/learning-gcloud-444623/web:latest`
 
@@ -122,3 +122,9 @@ GOOGLE_CLIENT_CALLBACK_URL=http://127.0.0.1:3000
 FILE_KEY_PRIVATE=jwtRSA256-private.pem
 FILE_KEY_PUBLIC=jwtRSA256-public.pem
 ```
+
+### TODO: 
+    Shift to secure env service: https://cloud.google.com/run/docs/configuring/services/environment-variables
+
+    https://cloud.google.com/load-balancing/docs/https/setup-global-ext-https-serverless
+    https://cloud.google.com/load-balancing/docs/https/ext-http-lb-tf-module-examples

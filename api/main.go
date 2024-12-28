@@ -47,8 +47,19 @@ func main() {
 	if googleClientId == "" || googleClientSecret == "" ||
 		googleClientCallbackUrl == "" || filePathKeyPrivate == "" ||
 		filePathKeyPublic == "" || cookieDomain == "" || apiPort == "" || webBaseUrl == "" {
-		log.Fatal(`Environment variables (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
-         GOOGLE_CLIENT_CALLBACK_URL, FILE_KEY_PRIVATE, FILE_KEY_PUBLIC,COOKIE_DOMAIN, API_PORT, WEB_BASE_URL) are required`)
+		log.Fatalf(`Environment variables 
+		(GOOGLE_CLIENT_ID: %v, GOOGLE_CLIENT_SECRET: %v,
+         GOOGLE_CLIENT_CALLBACK_URL: %v, 
+		 FILE_KEY_PRIVATE: %v, FILE_KEY_PUBLIC: %v,
+		 COOKIE_DOMAIN: %v, API_PORT: %v, WEB_BASE_URL: %v) are required`,
+			googleClientId,
+			"<sensored>",
+			googleClientCallbackUrl,
+			filePathKeyPrivate,
+			filePathKeyPublic,
+			cookieDomain,
+			apiPort,
+			webBaseUrl)
 	}
 
 	fmt.Printf("Starting backend on the port: %v", apiPort)

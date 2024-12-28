@@ -13,6 +13,9 @@ RUN npm install
 # Copy the rest of your application files
 COPY . .
 
+ARG API_BASE_URL
+ENV API_BASE_URL=$API_BASE_URL
+
 # Make executable
 RUN chmod +x ./run_web.sh
 
