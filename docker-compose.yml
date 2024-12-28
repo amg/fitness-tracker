@@ -5,15 +5,23 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
+      x-bake:
+        platforms:
+          - linux/amd64
+          - linux/arm64
     ports:
-      - "8080:8080"
-    # image: "gcr.io/${GOOGLE_PROJECT_ID}/api" 
+      - "${API_PORT}:${API_PORT}"
+    image: "gcr.io/${GOOGLE_PROJECT_ID}/${ENV}api" 
   frontend:
     env_file:
       - ${ENV_PATH}
     build:
       context: ./web
       dockerfile: Dockerfile
-    # image: "gcr.io/${GOOGLE_PROJECT_ID}/web" 
+      x-bake:
+        platforms:
+          - linux/amd64
+          - linux/arm64
+    image: "gcr.io/${GOOGLE_PROJECT_ID}/${ENV}web" 
     ports:
-      - "3000:3000"
+      - "${WEB_PORT}:${WEB_PORT}"

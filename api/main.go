@@ -18,11 +18,17 @@ import (
 
 const HEADER_JWT = "jwt_token"
 
-var localhost string
+var apiPort string
+
+// host excluding port
+var cookieDomain string
+
+// host including port for CORS allow
+var webBaseUrl string
+
 var googleClientId string
 var googleClientSecret string
 var googleClientCallbackUrl string
-var backendPort string
 
 var filePathKeyPrivate string
 var filePathKeyPublic string
@@ -31,34 +37,32 @@ func main() {
 	googleClientId = os.Getenv("GOOGLE_CLIENT_ID")
 	googleClientSecret = os.Getenv("GOOGLE_CLIENT_SECRET")
 	googleClientCallbackUrl = os.Getenv("GOOGLE_CLIENT_CALLBACK_URL")
+	apiPort = os.Getenv("API_PORT")
+	cookieDomain = os.Getenv("COOKIE_DOMAIN")
+	webBaseUrl = os.Getenv("WEB_BASE_URL")
 
 	filePathKeyPrivate = os.Getenv("FILE_KEY_PRIVATE")
 	filePathKeyPublic = os.Getenv("FILE_KEY_PUBLIC")
-	localhost = os.Getenv("LOCALHOST")
 
 	if googleClientId == "" || googleClientSecret == "" ||
-		googleClientCallbackUrl == "" || filePathKeyPrivate == "" || filePathKeyPublic == "" || localhost == "" {
+		googleClientCallbackUrl == "" || filePathKeyPrivate == "" ||
+		filePathKeyPublic == "" || cookieDomain == "" || apiPort == "" || webBaseUrl == "" {
 		log.Fatal(`Environment variables (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
-         GOOGLE_CLIENT_CALLBACK_URL, FILE_KEY_PRIVATE, FILE_KEY_PUBLIC) are required`)
+         GOOGLE_CLIENT_CALLBACK_URL, FILE_KEY_PRIVATE, FILE_KEY_PUBLIC,COOKIE_DOMAIN, API_PORT, WEB_BASE_URL) are required`)
 	}
 
-	backendPort = os.Getenv("API_PORT")
-	if backendPort == "" {
-		log.Fatal(`Environment variable API_PORT is not defined`)
-	}
-
-	fmt.Printf("Starting backend on the port: %v", backendPort)
+	fmt.Printf("Starting backend on the port: %v", apiPort)
 	// starting the server that will listen forever on the port
 	http.HandleFunc("/", rootHandler)
 	http.Handle("/api/auth/google", corsHandler(googleAuthCodeHandler))
 	http.HandleFunc("/authenticated", corsHandler(authenticatedCallHandler))
 
-	log.Fatal(http.ListenAndServe(":"+backendPort, nil))
+	log.Fatal(http.ListenAndServe(":"+apiPort, nil))
 }
 
 func corsHandler(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", os.Getenv("WEB_HOST"))
+		w.Header().Set("Access-Control-Allow-Origin", webBaseUrl)
 		w.Header().Add("Access-Control-Allow-Headers", "Content-Type, Origin, Accept, googleTokens")
 		w.Header().Add("Access-Control-Allow-Methods", "GET, POST,OPTIONS")
 		w.Header().Add("Access-Control-Allow-Credentials", "true")
@@ -189,7 +193,7 @@ func googleAuthCodeHandler(responseWriter http.ResponseWriter, request *http.Req
 	http.SetCookie(responseWriter, &http.Cookie{
 		Name:     HEADER_JWT,
 		Value:    serverJWTToken,
-		Domain:   localhost,
+		Domain:   cookieDomain,
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   false, //NOTE: for testing purposes only
@@ -208,7 +212,7 @@ func googleAuthCodeHandler(responseWriter http.ResponseWriter, request *http.Req
 func googleOneOffTokenExchange(authCode GoogleAuthCodeInput) (token *oauth2.Token, err error) {
 	var googleOauthConfig = &oauth2.Config{
 		// port is of the ReactJS app
-		RedirectURL:  fmt.Sprintf("http://%s:%v", localhost, 3000),
+		RedirectURL:  googleClientCallbackUrl,
 		ClientID:     googleClientId,
 		ClientSecret: googleClientSecret,
 		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email"},
