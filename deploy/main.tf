@@ -94,24 +94,24 @@ resource "google_cloud_run_domain_mapping" "api_domain_mapping" {
     route_name = google_cloud_run_service.api.name
   }
 }
+# Re-add after testing this works well manually from console
+# resource "google_dns_record_set" "dns_web_cname" {
+#   name         = "web.${google_dns_managed_zone.zone.dns_name}"
+#   managed_zone = google_dns_managed_zone.zone.name
+#   type         = "CNAME"
+#   ttl          = 300
+#   rrdatas      = ["web.fitnesstracker.alexlearningcloud.dev."]
+# }
 
-resource "google_dns_record_set" "dns_web_cname" {
-  name         = "web.${google_dns_managed_zone.zone.dns_name}"
-  managed_zone = google_dns_managed_zone.zone.name
-  type         = "CNAME"
-  ttl          = 300
-  rrdatas      = ["web.fitnesstracker.alexlearningcloud.dev."]
-}
+# resource "google_dns_record_set" "dns_api_cname" {
+#   name         = "api.${google_dns_managed_zone.zone.dns_name}"
+#   managed_zone = google_dns_managed_zone.zone.name
+#   type         = "CNAME"
+#   ttl          = 300
+#   rrdatas      = ["api.fitnesstracker.alexlearningcloud.dev."]
+# }
 
-resource "google_dns_record_set" "dns_api_cname" {
-  name         = "api.${google_dns_managed_zone.zone.dns_name}"
-  managed_zone = google_dns_managed_zone.zone.name
-  type         = "CNAME"
-  ttl          = 300
-  rrdatas      = ["api.fitnesstracker.alexlearningcloud.dev."]
-}
-
-resource "google_dns_managed_zone" "zone" {
-  name     = "dns-zone"
-  dns_name = "fitnesstracker.alexlearningcloud.dev."
-}
+# resource "google_dns_managed_zone" "zone" {
+#   name     = "dns-zone"
+#   dns_name = "fitnesstracker.alexlearningcloud.dev."
+# }
