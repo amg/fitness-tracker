@@ -6,5 +6,7 @@ variable "project_id" {
 variable "region" {
   type        = string
   description = "Global region to use in all services"
-  default     = "australia-southeast2"
+  # using us-west so custom domain mapping works
+  default = "us-west1"
+  # default     = "australia-southeast2"
 }

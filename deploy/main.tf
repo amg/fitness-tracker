@@ -71,3 +71,47 @@ resource "google_cloud_run_service_iam_policy" "api_noauth" {
   service     = google_cloud_run_service.api.name
   policy_data = data.google_iam_policy.noauth.policy_data
 }
+
+# Domain mapping
+resource "google_cloud_run_domain_mapping" "web_domain_mapping" {
+  name     = "web.fitnesstracker.alexlearningcloud.dev"
+  location = google_cloud_run_service.web.location
+  metadata {
+    namespace = var.project_id
+  }
+  spec {
+    route_name = google_cloud_run_service.web.name
+  }
+}
+
+resource "google_cloud_run_domain_mapping" "api_domain_mapping" {
+  name     = "api.fitnesstracker.alexlearningcloud.dev"
+  location = google_cloud_run_service.api.location
+  metadata {
+    namespace = var.project_id
+  }
+  spec {
+    route_name = google_cloud_run_service.api.name
+  }
+}
+
+resource "google_dns_record_set" "dns_web_cname" {
+  name         = "web.${google_dns_managed_zone.zone.dns_name}"
+  managed_zone = google_dns_managed_zone.zone.name
+  type         = "CNAME"
+  ttl          = 300
+  rrdatas      = ["web.fitnesstracker.alexlearningcloud.dev."]
+}
+
+resource "google_dns_record_set" "dns_api_cname" {
+  name         = "api.${google_dns_managed_zone.zone.dns_name}"
+  managed_zone = google_dns_managed_zone.zone.name
+  type         = "CNAME"
+  ttl          = 300
+  rrdatas      = ["api.fitnesstracker.alexlearningcloud.dev."]
+}
+
+resource "google_dns_managed_zone" "zone" {
+  name     = "dns-zone"
+  dns_name = "fitnesstracker.alexlearningcloud.dev."
+}

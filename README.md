@@ -124,7 +124,18 @@ FILE_KEY_PUBLIC=jwtRSA256-public.pem
 ```
 
 ### TODO: 
-    Shift to secure env service: https://cloud.google.com/run/docs/configuring/services/environment-variables
+    Shift to secure env service:
+        https://cloud.google.com/secret-manager/docs/create-secret-quickstart
+
+        ? https://cloud.google.com/run/docs/configuring/services/environment-variables
 
     https://cloud.google.com/load-balancing/docs/https/setup-global-ext-https-serverless
     https://cloud.google.com/load-balancing/docs/https/ext-http-lb-tf-module-examples
+
+Load balancer the hard way:
+    https://cloud.google.com/blog/topics/developers-practitioners/serverless-load-balancing-terraform-hard-way
+
+Region picker:
+    https://googlecloudplatform.github.io/region-picker/
+
+https://cloud.google.com/dns/docs/zones
