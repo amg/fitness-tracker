@@ -176,6 +176,9 @@ func googleAuthCodeHandler(responseWriter http.ResponseWriter, request *http.Req
 		http.Error(responseWriter, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	// got authcode for Google, request tokens and store them in db
+
 	googleTokens, err := googleOneOffTokenExchange(authCode)
 	if err != nil {
 		log.Printf("Google token exchange for session failed: %v\n", err)
@@ -183,17 +186,19 @@ func googleAuthCodeHandler(responseWriter http.ResponseWriter, request *http.Req
 		return
 	}
 
+	// generate user in db and add Gtokens
+
 	info, err := googleGetProfileInfo(googleTokens)
 	if err != nil {
 		log.Printf("Google profile read failed: %v\n", err)
 		http.Error(responseWriter, err.Error(), http.StatusBadRequest)
 		return
 	}
-	log.Printf("Customer's info: %s\n", *info)
+	log.Printf("Customer's info: %v\n", *info)
 	//TODO: add info to DB along with refresh token
 
-	// generating only jwt token for now
-	serverJWTToken, err := jwtWithCustomClaims(filePathKeyPrivate, time.Now())
+	// generating only jwt token for now. Using Google Id as subject in token
+	serverJWTToken, err := jwtWithCustomClaims(info.Id, filePathKeyPrivate, time.Now())
 	if err != nil {
 		log.Printf("JWT server token generated: %v\n", err)
 		http.Error(responseWriter, err.Error(), http.StatusBadRequest)
@@ -241,7 +246,13 @@ func googleOneOffTokenExchange(authCode GoogleAuthCodeInput) (token *oauth2.Toke
 }
 
 type GoogleProfileInfo struct {
-	Profile string `json:"profile"`
+	Id            string `json:"id"`
+	Email         string `json:"email"`
+	VerifiedEmail bool   `json:"verified_email"`
+	Name          string `json:"name"`
+	GivenName     string `json:"given_name"`
+	FamilyName    string `json:"family_name"`
+	Picture       string `json:"picture"`
 }
 
 const oauthGoogleUrlAPI = "https://www.googleapis.com/oauth2/v2/userinfo?access_token="
@@ -270,7 +281,7 @@ func googleGetProfileInfo(googleTokens *oauth2.Token) (profileInfo *GoogleProfil
 
 // Create a token
 // Ref: https://github.com/golang-jwt/jwt/blob/main/example_test.go
-func jwtWithCustomClaims(filePathKeyPrivate string, now time.Time) (string, error) {
+func jwtWithCustomClaims(customerId, filePathKeyPrivate string, now time.Time) (string, error) {
 	cryptoKey := LoadRSAPrivateKeyFromDisk(fmt.Sprintf("./%s", filePathKeyPrivate))
 
 	type MyCustomClaims struct {
@@ -287,10 +298,9 @@ func jwtWithCustomClaims(filePathKeyPrivate string, now time.Time) (string, erro
 			ExpiresAt: jwt.NewNumericDate(now.Add(30 * time.Minute)),
 			IssuedAt:  jwt.NewNumericDate(now),
 			NotBefore: jwt.NewNumericDate(now),
-			Issuer:    "test",
-			Subject:   "somebody",
-			ID:        "1",
-			Audience:  []string{"somebody_else"},
+			Issuer:    "FitnessTracker",
+			Subject:   customerId,
+			Audience:  []string{"FitnessTrackerAPI"},
 		},
 	}
 

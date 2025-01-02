@@ -1,6 +1,14 @@
-# (MVP) Fitness Workout Tracker
+- [Requirements](#requirements)
+- [Technology](#technology)
+- [Building](#building)
+  - [Run locally](#run-locally)
+  - [Run on docker](#run-on-docker)
+  - [Run on GCP](#run-on-gcp)
+- [Env example](#env-example)
+- [TODO](#todo)
 
-## Web:
+
+## Requirements<a name="reqs"></a>
 
 Customer authentication:
     - (must) signup with google
@@ -32,7 +40,7 @@ Schedule builder:
     - (nice) add to google calendar (web)
 
 
-### Technology:
+## Technology<a name="technology"></a>
 
 React JS (https://www.googlecloudcommunity.com/gc/Community-Blogs/No-servers-no-problem-A-guide-to-deploying-your-React/ba-p/690760)
  - install node using brew
@@ -58,7 +66,7 @@ Future considerations:
      - https://github.com/golang-jwt/jwt?tab=readme-ov-file
 
 
-### Building
+## Building<a name="building"></a>
 
 `docker-compose.yaml` declares the services and `.env.development` (and others) specify some env variables.
 
@@ -68,23 +76,34 @@ Future considerations:
  - frontend
     ReactJS website
 
-Run command below to recreate container:
-`. ./.env.development && docker compose build --progress=plain --no-cache && docker compose up`
+### Run locally<a name="run-locally"></a>
 
-Run existing container:
-`. ./.env.development && docker compose up`
+Rebuilding docker with fresh copy of changes is a bit tedious (alternatively can look at pointing to local source when running docker).
+Docker handles passing env variables but without docker need to do it manually (have to be exported):
 
---------------
+**Running backend service from `api/` folder:**
+`eval $(sed -e '/^#/d' -e 's/^/export /' -e 's/$/;/' ../.env.development) && go run .`
+
+**Running frontend service from `web/` folder:**
+`eval $(sed -e '/^#/d' -e 's/^/export /' -e 's/$/;/' ../.env.development) && ./run_web.sh`
+
+### Run on docker<a name="run-docker"></a>
+
+Run command below to recreate container and run:
+`eval $(sed -e '/^#/d' -e 's/^/export /' -e 's/$/;/' ../.env.development) && docker compose watch`
+
+### Run on GCP<a name="run-gcp"></a>
 
 IMPORTANT: gcloud dosen't like images built on M1 so have to use `buildx bake` instead
-`. ./.env.staging && docker buildx bake`
+1. `. ./.env.staging && docker buildx bake`
 use ` --print` for dry run
 
 Pushing the image to google registry:
 https://cloud.google.com/artifact-registry/docs/docker/pushing-and-pulling
 
-`gcloud auth configure-docker`
-`. ./.env.staging && docker compose push`
+2. (if required)`gcloud auth configure-docker`
+3. `. ./.env.staging && docker compose push`
+4. from `deploy/` `terraform plan` + `terraform apply`
 
 Inspect manifest: `docker manifest inspect gcr.io/learning-gcloud-444623/web:latest`
 
@@ -94,7 +113,7 @@ Inspect manifest: `docker manifest inspect gcr.io/learning-gcloud-444623/web:lat
 https://medium.com/@francisihe/how-to-get-google-cloud-run-service-url-programmatically-72964e2ce344
 
 
-### Env example
+## Env example<a name="env-example"></a>
 
 ```
 ENV_PATH=./.env.development
@@ -123,7 +142,7 @@ FILE_KEY_PRIVATE=jwtRSA256-private.pem
 FILE_KEY_PUBLIC=jwtRSA256-public.pem
 ```
 
-### TODO: 
+## TODO<a name="todo"></a>
     Shift to secure env service:
         https://cloud.google.com/secret-manager/docs/create-secret-quickstart
 
@@ -141,3 +160,5 @@ Region picker:
 https://cloud.google.com/dns/docs/zones
 
 https://issuetracker.google.com/issues/140611842?pli=1
+
+https://www.whatsmydns.net/#NS

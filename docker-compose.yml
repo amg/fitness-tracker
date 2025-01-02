@@ -16,9 +16,15 @@ services:
         platforms:
           - linux/amd64
           - linux/arm64
-    # ports:
-    #   - "${API_PORT}:${API_PORT}"
+    ports:
+      - "${API_PORT}:${API_PORT}"
     image: "gcr.io/${GOOGLE_PROJECT_ID}/${ENV}api" 
+    command: go run .
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./api
+          target: /app
   frontend:
     build:
       context: ./web
@@ -30,5 +36,11 @@ services:
           - linux/amd64
           - linux/arm64
     image: "gcr.io/${GOOGLE_PROJECT_ID}/${ENV}web" 
-    # ports:
-    #   - "${WEB_PORT}:${WEB_PORT}"
+    ports:
+      - "${WEB_PORT}:${WEB_PORT}"
+    command: npm start
+    develop:
+      watch:
+        - action: sync
+          path: ./web
+          target: /app
