@@ -111,3 +111,64 @@ resource "google_dns_record_set" "dns_api_cname" {
   ttl          = 300
   rrdatas      = ["ghs.googlehosted.com."]
 }
+
+// -------- Env ---------
+# GOOGLE_OAUTH_CLIENT_SECRET
+resource "google_secret_manager_secret" "secret_google_oauth_client_secret" {
+  secret_id = "GOOGLE_OAUTH_CLIENT_SECRET"
+  project   = var.project_id
+
+  replication {
+    user_managed {
+      replicas {
+        location = var.region
+      }
+    }
+  }
+}
+
+
+resource "google_secret_manager_secret_version" "secret_google_oauth_client_secret_data" {
+  secret      = google_secret_manager_secret.secret_google_oauth_client_secret.id
+  secret_data = var.seed_secret_google_oauth_secret
+}
+
+# JWT_KEY_PRIVATE
+resource "google_secret_manager_secret" "secret_jwt_private_pem" {
+  secret_id = "JWT_KEY_PRIVATE"
+  project   = var.project_id
+
+  replication {
+    user_managed {
+      replicas {
+        location = var.region
+      }
+    }
+  }
+}
+
+
+resource "google_secret_manager_secret_version" "secret_jwt_private_pem_data" {
+  secret      = google_secret_manager_secret.secret_jwt_private_pem.id
+  secret_data = file("${path.module}/../.secrets/jwtRSA256-private.pem")
+}
+
+# JWT_KEY_PUBLIC
+resource "google_secret_manager_secret" "secret_jwt_public_pem" {
+  secret_id = "JWT_KEY_PUBLIC"
+  project   = var.project_id
+
+  replication {
+    user_managed {
+      replicas {
+        location = var.region
+      }
+    }
+  }
+}
+
+
+resource "google_secret_manager_secret_version" "secret_jwt_public_pem_data" {
+  secret      = google_secret_manager_secret.secret_jwt_public_pem.id
+  secret_data = file("${path.module}/../.secrets/jwtRSA256-public.pem")
+}

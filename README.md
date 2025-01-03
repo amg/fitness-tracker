@@ -105,6 +105,9 @@ https://cloud.google.com/artifact-registry/docs/docker/pushing-and-pulling
 3. `. ./.env.staging && docker compose push`
 4. from `deploy/` `terraform plan` + `terraform apply`
 
+// load environments to populate secrets
+`eval $(sed -e '/^#/d' -e 's/^/export /' -e 's/$/;/' ../.secrets/.deploy.env) && terraform plan``
+
 Inspect manifest: `docker manifest inspect gcr.io/learning-gcloud-444623/web:latest`
 
 
@@ -116,9 +119,7 @@ https://medium.com/@francisihe/how-to-get-google-cloud-run-service-url-programma
 ## Env example<a name="env-example"></a>
 
 ```
-ENV_PATH=./.env.development
-
-ENV=dev-
+ENV=dev
 
 # used for CORS
 WEB_BASE_URL=http://127.0.0.1:3000
@@ -143,10 +144,9 @@ FILE_KEY_PUBLIC=jwtRSA256-public.pem
 ```
 
 ## TODO<a name="todo"></a>
-    Shift to secure env service:
-        https://cloud.google.com/secret-manager/docs/create-secret-quickstart
-
-        ? https://cloud.google.com/run/docs/configuring/services/environment-variables
+Shift to secure env service:
+    https://cloud.google.com/secret-manager/docs/create-secret-quickstart
+    ? https://cloud.google.com/run/docs/configuring/services/environment-variables
 
     https://cloud.google.com/load-balancing/docs/https/setup-global-ext-https-serverless
     https://cloud.google.com/load-balancing/docs/https/ext-http-lb-tf-module-examples
@@ -156,9 +156,13 @@ Load balancer the hard way:
 
 Region picker:
     https://googlecloudplatform.github.io/region-picker/
+    https://cloud.google.com/dns/docs/zones
 
-https://cloud.google.com/dns/docs/zones
+Testing DNS propagation:
+    https://www.whatsmydns.net/#NS
 
-https://issuetracker.google.com/issues/140611842?pli=1
+Debugging GOlang with docker container:
+    https://blog.jetbrains.com/go/2020/05/06/debugging-a-go-application-inside-a-docker-container/
 
-https://www.whatsmydns.net/#NS
+Adding PostgreSQL:
+    https://blog.logrocket.com/building-simple-app-go-postgresql/

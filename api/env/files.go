@@ -1,4 +1,4 @@
-package main
+package env
 
 // Copied over from:
 //  https://github.com/golang-jwt/jwt/blob/main/test/helpers.go
@@ -17,7 +17,12 @@ func LoadRSAPrivateKeyFromDisk(location string) *rsa.PrivateKey {
 	if e != nil {
 		panic(e.Error())
 	}
-	key, e := jwt.ParseRSAPrivateKeyFromPEM(keyData)
+
+	return ParseRSAPrivateKeyFromPEMString(keyData)
+}
+
+func ParseRSAPrivateKeyFromPEMString(pem []byte) *rsa.PrivateKey {
+	key, e := jwt.ParseRSAPrivateKeyFromPEM(pem)
 	if e != nil {
 		panic(e.Error())
 	}
@@ -29,23 +34,15 @@ func LoadRSAPublicKeyFromDisk(location string) *rsa.PublicKey {
 	if e != nil {
 		panic(e.Error())
 	}
-	key, e := jwt.ParseRSAPublicKeyFromPEM(keyData)
+	return ParseRSAPublicKeyFromPEMString(keyData)
+}
+
+func ParseRSAPublicKeyFromPEMString(pem []byte) *rsa.PublicKey {
+	key, e := jwt.ParseRSAPublicKeyFromPEM(pem)
 	if e != nil {
 		panic(e.Error())
 	}
 	return key
-}
-
-// MakeSampleToken creates and returns a encoded JWT token that has been signed with the specified cryptographic key.
-func MakeSampleToken(c jwt.Claims, method jwt.SigningMethod, key interface{}) string {
-	token := jwt.NewWithClaims(method, c)
-	s, e := token.SignedString(key)
-
-	if e != nil {
-		panic(e.Error())
-	}
-
-	return s
 }
 
 func LoadECPrivateKeyFromDisk(location string) crypto.PrivateKey {

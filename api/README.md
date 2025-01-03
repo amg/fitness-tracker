@@ -9,3 +9,7 @@ NOTE: these tokens are test only as they are committed to the repository.
 
 Refs:
  https://techdocs.akamai.com/iot-token-access-control/docs/generate-rsa-keys
+
+
+Run from /api
+`eval $(sed -e '/^#/d' -e 's/^/export /' -e 's/$/;/' ../.secrets/.env.development) && go run ./main.go`

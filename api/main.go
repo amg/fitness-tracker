@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fitness-tracker/env"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -18,62 +18,27 @@ import (
 
 const HEADER_JWT = "jwt_token"
 
-var apiPort string
-
-// host excluding port
-var cookieDomain string
-
-// host including port for CORS allow
-var webBaseUrl string
-
-var googleClientId string
-var googleClientSecret string
-var googleClientCallbackUrl string
-
-var filePathKeyPrivate string
-var filePathKeyPublic string
+var config env.Config
 
 func main() {
-	googleClientId = os.Getenv("GOOGLE_CLIENT_ID")
-	googleClientSecret = os.Getenv("GOOGLE_CLIENT_SECRET")
-	googleClientCallbackUrl = os.Getenv("GOOGLE_CLIENT_CALLBACK_URL")
-	apiPort = os.Getenv("API_PORT")
-	cookieDomain = os.Getenv("COOKIE_DOMAIN")
-	webBaseUrl = os.Getenv("WEB_BASE_URL")
-
-	filePathKeyPrivate = os.Getenv("FILE_KEY_PRIVATE")
-	filePathKeyPublic = os.Getenv("FILE_KEY_PUBLIC")
-
-	if googleClientId == "" || googleClientSecret == "" ||
-		googleClientCallbackUrl == "" || filePathKeyPrivate == "" ||
-		filePathKeyPublic == "" || cookieDomain == "" || apiPort == "" || webBaseUrl == "" {
-		log.Fatalf(`Environment variables 
-		(GOOGLE_CLIENT_ID: %v, GOOGLE_CLIENT_SECRET: %v,
-         GOOGLE_CLIENT_CALLBACK_URL: %v, 
-		 FILE_KEY_PRIVATE: %v, FILE_KEY_PUBLIC: %v,
-		 COOKIE_DOMAIN: %v, API_PORT: %v, WEB_BASE_URL: %v) are required`,
-			googleClientId,
-			"<sensored>",
-			googleClientCallbackUrl,
-			filePathKeyPrivate,
-			filePathKeyPublic,
-			cookieDomain,
-			apiPort,
-			webBaseUrl)
-	}
-
-	fmt.Printf("Starting backend on the port: %v", apiPort)
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("Error: %v", r)
+		}
+	}()
+	config = *env.LoadEnvVariables()
+	log.Printf("Starting backend on the port: %v", config.Env.ApiPort())
 	// starting the server that will listen forever on the port
 	http.HandleFunc("/", rootHandler)
 	http.Handle("/api/auth/google", corsHandler(googleAuthCodeHandler))
 	http.HandleFunc("/authenticated", corsHandler(authenticatedCallHandler))
 
-	log.Fatal(http.ListenAndServe(":"+apiPort, nil))
+	log.Fatal(http.ListenAndServe(":"+config.Env.ApiPort(), nil))
 }
 
 func corsHandler(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", webBaseUrl)
+		w.Header().Set("Access-Control-Allow-Origin", config.Env.WebBaseUrl())
 		w.Header().Add("Access-Control-Allow-Headers", "Content-Type, Origin, Accept, googleTokens")
 		w.Header().Add("Access-Control-Allow-Methods", "GET, POST,OPTIONS")
 		w.Header().Add("Access-Control-Allow-Credentials", "true")
@@ -122,7 +87,7 @@ func authenticatedCallHandler(responseWriter http.ResponseWriter, request *http.
 		return
 	}
 
-	cryptoPublicKey := LoadRSAPublicKeyFromDisk(fmt.Sprintf("./%s", filePathKeyPublic))
+	cryptoPublicKey := config.SecEnv.JwtKeyPublic()
 
 	parsed, err := jwt.Parse(jwtCookie.Value, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
@@ -198,7 +163,7 @@ func googleAuthCodeHandler(responseWriter http.ResponseWriter, request *http.Req
 	//TODO: add info to DB along with refresh token
 
 	// generating only jwt token for now. Using Google Id as subject in token
-	serverJWTToken, err := jwtWithCustomClaims(info.Id, filePathKeyPrivate, time.Now())
+	serverJWTToken, err := jwtWithCustomClaims(info.Id, time.Now())
 	if err != nil {
 		log.Printf("JWT server token generated: %v\n", err)
 		http.Error(responseWriter, err.Error(), http.StatusBadRequest)
@@ -209,7 +174,7 @@ func googleAuthCodeHandler(responseWriter http.ResponseWriter, request *http.Req
 	http.SetCookie(responseWriter, &http.Cookie{
 		Name:     HEADER_JWT,
 		Value:    serverJWTToken,
-		Domain:   cookieDomain,
+		Domain:   config.Env.WebDomain(),
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   false, //NOTE: for testing purposes only
@@ -228,9 +193,9 @@ func googleAuthCodeHandler(responseWriter http.ResponseWriter, request *http.Req
 func googleOneOffTokenExchange(authCode GoogleAuthCodeInput) (token *oauth2.Token, err error) {
 	var googleOauthConfig = &oauth2.Config{
 		// port is of the ReactJS app
-		RedirectURL:  googleClientCallbackUrl,
-		ClientID:     googleClientId,
-		ClientSecret: googleClientSecret,
+		RedirectURL:  config.Env.GoogleClientCallbackUrl(),
+		ClientID:     config.Env.GoogleClientId(),
+		ClientSecret: config.SecEnv.GoogleClientSecret(),
 		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email"},
 		Endpoint:     google.Endpoint,
 	}
@@ -281,8 +246,8 @@ func googleGetProfileInfo(googleTokens *oauth2.Token) (profileInfo *GoogleProfil
 
 // Create a token
 // Ref: https://github.com/golang-jwt/jwt/blob/main/example_test.go
-func jwtWithCustomClaims(customerId, filePathKeyPrivate string, now time.Time) (string, error) {
-	cryptoKey := LoadRSAPrivateKeyFromDisk(fmt.Sprintf("./%s", filePathKeyPrivate))
+func jwtWithCustomClaims(customerId string, now time.Time) (string, error) {
+	cryptoKey := config.SecEnv.JwtKeyPrivate()
 
 	type MyCustomClaims struct {
 		Foo string `json:"foo"`
