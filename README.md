@@ -90,7 +90,15 @@ Docker handles passing env variables but without docker need to do it manually (
 ### Run on docker<a name="run-docker"></a>
 
 Run command below to recreate container and run:
-`eval $(sed -e '/^#/d' -e 's/^/export /' -e 's/$/;/' ../.env.development) && docker compose watch`
+// rebuidls
+`eval $(sed -e '/^#/d' -e 's/^/export /' -e 's/$/;/' ./.secrets/.env.development) && docker compose watch`
+
+// doesn't rebuild but prints logs as they come
+`eval $(sed -e '/^#/d' -e 's/^/export /' -e 's/$/;/' ./.secrets/.env.development) && docker compose up --watch`
+
+// runs printing logs
+`... up logs`
+
 
 ### Run on GCP<a name="run-gcp"></a>
 

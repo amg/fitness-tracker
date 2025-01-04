@@ -1,40 +1,35 @@
-import React, { useState } from 'react';
-import { googleLogout, useGoogleLogin } from '@react-oauth/google';
+import React, { useState, useCallback } from 'react';
+import { createTheme, ThemeProvider } from '@mui/material';
+import { AuthComponent, AuthStore } from './components/AuthComponent.js'
+import Button from '@mui/material/Button';
 
 const apiBaseUrl = window.env.API_BASE_URL
+const theme = createTheme({
+    palette: {
+        primary: {
+            main: '#2196F3',
+        },
+        secondary: {
+            main: '#f50057',
+        },
+    },
+    typography: {
+        fontFamily: 'Arial, sans-serif',
+    },
+});
+
 
 function App() {
     const [profile, setProfile] = useState(null);
     const [data, setData] = useState(null);
 
-    const googleLogin = useGoogleLogin({
-        onSuccess: (codeResponse) => {
-            // Send the authorization code to the backend server
-            
-            // TODO: update this to allow easier customisation
-            fetch(apiBaseUrl + '/api/auth/google', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                mode: "cors",
-                credentials: "include",
-                body: JSON.stringify({ code: codeResponse.code }),
-            })
-                .then(response => response.json())
-                .then(data => {
-                    setProfile(data);
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                });
-        },
-        onError: () => {
-            // Handle login errors here
-            console.error('Google login failed');
-        },
-        flow: 'auth-code',
-    });
+    const childSetProfile = useCallback((val) => {
+        setProfile(val);
+    }, [setProfile]);
+
+    const clearData = useCallback((val) => {
+        setData({status: "Unauthenticated"});
+    }, [setData])
 
     const authenticatedCall = () => {
         fetch(apiBaseUrl + '/authenticated', {
@@ -45,50 +40,42 @@ function App() {
             mode: "cors",
             credentials: "include",
         })
-            .then(response => response.json())
-            .then(response => 
-                setData(response)
-            )
+            .then(response => {
+                if (response.status == 401) {
+                    setProfile(null);
+                    AuthStore.name = null;
+                    throw new Error(`Response status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                setData(data);
+            })
             .catch(error => {
-                setData({error: "Unauthorised"})
-                console.error('Error:', error);
+                setData({message: error.message});
+                console.info('Caught error:', error);
             });
     }
 
-    // log out function to log the user out of google and set the profile array to null
-    const logOut = () => {
-        googleLogout();
-        setProfile(null);
-    };
-
     return (
-        <div>
-            <h2>React Google Login</h2>
-            <br />
-            <br />
-            {profile ? (
-                <div>
-                    <img src={profile.picture} alt="user image" />
-                    <h3>User Logged in</h3>
-                    <p>Name: {profile.name}</p>
-                    <p>Email Address: {profile.email}</p>
-                    <br />
-                    <br />
-                    <button onClick={logOut}>Log out</button>
-                </div>
-            ) : (
-                <>
-                    <button onClick={() => googleLogin()}>Sign in with Google 🚀 </button>
-                    <button onClick={() => authenticatedCall()}>Make authenticated call</button>
-                </>
-            )}
-            {data ? (
-                <div> {JSON.stringify(data)} </div>
-            ) : (
-                <div>No data</div>
-            )
-            }
-        </div>
+        <ThemeProvider theme={theme}>
+            <div>
+                <h2>React Google Login</h2>
+                <br />
+                <br />
+                <AuthComponent profile={profile} setProfile={childSetProfile} onUnauthenticated={clearData} />
+                <br />
+                <Button variant="contained" size="small" onClick={() => authenticatedCall()}>Make authenticated call</Button>
+                <br />
+                <br />
+                {data ? (
+                    <div> {JSON.stringify(data)} </div>
+                ) : (
+                    <div>No data</div>
+                )
+                }
+            </div>
+        </ThemeProvider>
     );
 }
 export default App;

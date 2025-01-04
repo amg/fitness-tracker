@@ -17,6 +17,7 @@ import (
 )
 
 const HEADER_JWT = "jwt_token"
+const JWT_EXPIRATION_TIME = 30 * time.Minute
 
 var config env.Config
 
@@ -30,8 +31,9 @@ func main() {
 	log.Printf("Starting backend on the port: %v", config.Env.ApiPort())
 	// starting the server that will listen forever on the port
 	http.HandleFunc("/", rootHandler)
-	http.Handle("/api/auth/google", corsHandler(googleAuthCodeHandler))
+	http.HandleFunc("/api/auth/google", corsHandler(googleAuthCodeHandler))
 	http.HandleFunc("/authenticated", corsHandler(authenticatedCallHandler))
+	http.HandleFunc("/logout", corsHandler(logoutCallHandler))
 
 	log.Fatal(http.ListenAndServe(":"+config.Env.ApiPort(), nil))
 }
@@ -68,23 +70,45 @@ func rootHandler(responseWriter http.ResponseWriter, request *http.Request) {
 }
 
 func authenticatedCallHandler(responseWriter http.ResponseWriter, request *http.Request) {
-	// testing recovering from panic
-	defer func() {
-		if err := recover(); err != nil {
-			switch t := err.(type) {
-			case string:
-				http.Error(responseWriter, t, http.StatusUnauthorized)
-			default:
-				http.Error(responseWriter, "Unspecified panic", http.StatusUnauthorized)
-			}
-		}
-	}()
+	err := validateToken(responseWriter, request)
+	if err != nil {
+		http.Error(responseWriter, err.Error(), http.StatusUnauthorized)
+		return
+	}
 
+	a, _ := json.Marshal(map[string]int{"foo": 1, "bar": 2, "baz": 3})
+	responseWriter.Write(a)
+}
+
+func logoutCallHandler(responseWriter http.ResponseWriter, request *http.Request) {
+	err := validateToken(responseWriter, request)
+	if err != nil {
+		http.Error(responseWriter, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	http.SetCookie(responseWriter, &http.Cookie{
+		Name:     HEADER_JWT,
+		Value:    "",
+		Domain:   config.Env.WebDomain(),
+		Path:     "/",
+		Expires:  time.Unix(0, 0),
+		HttpOnly: true,
+		Secure:   false, //NOTE: for testing purposes only
+	})
+	a, _ := json.Marshal(map[string]bool{"logged out": true})
+	responseWriter.Write(a)
+}
+
+/**
+* Validates token consistently. Call in all authenticated calls.
+ */
+func validateToken(responseWriter http.ResponseWriter, request *http.Request) error {
 	jwtCookie, err := request.Cookie(HEADER_JWT)
 	if err != nil {
 		log.Printf("Token is missing: %v\n", err)
 		http.Error(responseWriter, err.Error(), http.StatusUnauthorized)
-		return
+		return err
 	}
 
 	cryptoPublicKey := config.SecEnv.JwtKeyPublic()
@@ -100,9 +124,8 @@ func authenticatedCallHandler(responseWriter http.ResponseWriter, request *http.
 	if !parsed.Valid {
 		log.Printf("Token verification failed: %v\n", err)
 		http.Error(responseWriter, err.Error(), http.StatusUnauthorized)
-		return
+		return err
 	}
-
 	// why do this not work while Parse above does?
 	// err = jwt.SigningMethodRS256.Verify(strings.Join(parts[0:2], "."), ([]byte)(parts[2]), cryptoPublicKey)
 	// if err != nil {
@@ -110,8 +133,8 @@ func authenticatedCallHandler(responseWriter http.ResponseWriter, request *http.
 	// 	http.Error(responseWriter, err.Error(), http.StatusUnauthorized)
 	// 	return
 	// }
-	a, _ := json.Marshal(map[string]int{"foo": 1, "bar": 2, "baz": 3})
-	responseWriter.Write(a)
+
+	return nil
 }
 
 // Google one-off auth token provided to the server to exchange for the googleTokens pair
@@ -143,7 +166,6 @@ func googleAuthCodeHandler(responseWriter http.ResponseWriter, request *http.Req
 	}
 
 	// got authcode for Google, request tokens and store them in db
-
 	googleTokens, err := googleOneOffTokenExchange(authCode)
 	if err != nil {
 		log.Printf("Google token exchange for session failed: %v\n", err)
@@ -152,21 +174,21 @@ func googleAuthCodeHandler(responseWriter http.ResponseWriter, request *http.Req
 	}
 
 	// generate user in db and add Gtokens
-
 	info, err := googleGetProfileInfo(googleTokens)
 	if err != nil {
 		log.Printf("Google profile read failed: %v\n", err)
-		http.Error(responseWriter, err.Error(), http.StatusBadRequest)
+		http.Error(responseWriter, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	log.Printf("Customer's info: %v\n", *info)
 	//TODO: add info to DB along with refresh token
 
 	// generating only jwt token for now. Using Google Id as subject in token
-	serverJWTToken, err := jwtWithCustomClaims(info.Id, time.Now())
+	now := time.Now()
+	serverJWTToken, err := jwtWithCustomClaims(info.Id, now)
 	if err != nil {
 		log.Printf("JWT server token generated: %v\n", err)
-		http.Error(responseWriter, err.Error(), http.StatusBadRequest)
+		http.Error(responseWriter, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -176,10 +198,16 @@ func googleAuthCodeHandler(responseWriter http.ResponseWriter, request *http.Req
 		Value:    serverJWTToken,
 		Domain:   config.Env.WebDomain(),
 		Path:     "/",
+		Expires:  now.Add(JWT_EXPIRATION_TIME),
 		HttpOnly: true,
 		Secure:   false, //NOTE: for testing purposes only
 	})
-	responseWriter.Write([]byte(""))
+	profile, err := json.Marshal(info)
+	if err != nil {
+		log.Printf("Failed to marshal profile: %v\n", err)
+		http.Error(responseWriter, err.Error(), http.StatusInternalServerError)
+	}
+	responseWriter.Write(profile)
 }
 
 // func userInfoHandler(responseWriter http.ResponseWriter, request *http.Request) {
@@ -260,7 +288,7 @@ func jwtWithCustomClaims(customerId string, now time.Time) (string, error) {
 		jwt.RegisteredClaims{
 			// A usual scenario is to set the expiration time relative to the current time
 			// For now it's 1 minute for testing purposes
-			ExpiresAt: jwt.NewNumericDate(now.Add(30 * time.Minute)),
+			ExpiresAt: jwt.NewNumericDate(now.Add(JWT_EXPIRATION_TIME)),
 			IssuedAt:  jwt.NewNumericDate(now),
 			NotBefore: jwt.NewNumericDate(now),
 			Issuer:    "FitnessTracker",

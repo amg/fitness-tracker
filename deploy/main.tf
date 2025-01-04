@@ -82,6 +82,9 @@ resource "google_cloud_run_domain_mapping" "web_domain_mapping" {
   spec {
     route_name = google_cloud_run_service.web.name
   }
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "google_cloud_run_domain_mapping" "api_domain_mapping" {
@@ -93,6 +96,9 @@ resource "google_cloud_run_domain_mapping" "api_domain_mapping" {
   spec {
     route_name = google_cloud_run_service.api.name
   }
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 # Re-add after testing this works well manually from console
 # NOTE: managed_zone is hardcoded, need to move to the other script?
@@ -102,6 +108,9 @@ resource "google_dns_record_set" "dns_web_cname" {
   type         = "CNAME"
   ttl          = 300
   rrdatas      = ["ghs.googlehosted.com."]
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "google_dns_record_set" "dns_api_cname" {
@@ -110,6 +119,9 @@ resource "google_dns_record_set" "dns_api_cname" {
   type         = "CNAME"
   ttl          = 300
   rrdatas      = ["ghs.googlehosted.com."]
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 // -------- Env ---------
