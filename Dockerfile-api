@@ -11,7 +11,7 @@ ARG SECRETS_PATH
 ENV SECRETS_PATH=${SECRETS_PATH}
 
 # need secrets
-COPY ${SECRETS_PATH} /app/.secrets
+COPY ${SECRETS_PATH}* /app/.secrets
 
 ARG ENV
 ENV ENV=${ENV}

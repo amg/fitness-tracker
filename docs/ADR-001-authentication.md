@@ -27,10 +27,13 @@ sequenceDiagram
     Backend->>+Google: auth token
     activate Google
     Google->>-Backend: session/refresh tokens
-    Backend->>-Web: refresh http-only cookie + session token
+    Backend->>-Web: session http-only cookie + user name
     activate Web
+    Web->>Web: store user name in localstorage
     deactivate Web
 :::
+
+### Below is not implemented:
 
 When session expires or not available, refresh request is made by Web to get the session/refresh token pair again.
 Refresh token in http-only cookie will be used to attempt a session refresh.

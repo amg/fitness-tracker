@@ -121,7 +121,8 @@ func secretByKey(key string, client *secretmanager.Client, googleProjectId strin
 	if checksum != *result.Payload.DataCrc32C {
 		log.Fatalf("Data corruption detected retrieving JWT_KEY_PRIVATE")
 	}
-	return result.Payload.String()
+
+	return string(result.Payload.Data)
 }
 
 type Env struct {

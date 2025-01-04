@@ -103,18 +103,16 @@ Run command below to recreate container and run:
 ### Run on GCP<a name="run-gcp"></a>
 
 IMPORTANT: gcloud dosen't like images built on M1 so have to use `buildx bake` instead
-1. `. ./.env.staging && docker buildx bake`
+1. `. ./.secrets/.env.staging && docker buildx bake`
 use ` --print` for dry run
 
 Pushing the image to google registry:
 https://cloud.google.com/artifact-registry/docs/docker/pushing-and-pulling
 
-2. (if required)`gcloud auth configure-docker`
-3. `. ./.env.staging && docker compose push`
-4. from `deploy/` `terraform plan` + `terraform apply`
+1. (if required)`gcloud auth configure-docker`
+2. (from `deploy/`) `. ./.secrets/.env.staging && docker compose push`
+3. (from `deploy/`) `eval $(sed -e '/^#/d' -e 's/^/export /' -e 's/$/;/' ../.secrets/.deploy.env) && terraform plan` + `apply`
 
-// load environments to populate secrets
-`eval $(sed -e '/^#/d' -e 's/^/export /' -e 's/$/;/' ../.secrets/.deploy.env) && terraform plan``
 
 Inspect manifest: `docker manifest inspect gcr.io/learning-gcloud-444623/web:latest`
 
