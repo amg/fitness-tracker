@@ -1,69 +1,66 @@
 - [Requirements](#requirements)
 - [Technology](#technology)
+  - [Docs:](#docs)
 - [Building](#building)
-  - [Run locally](#run-locally)
   - [Run on docker](#run-on-docker)
   - [Run on GCP](#run-on-gcp)
-- [Env example](#env-example)
-- [TODO](#todo)
+- [Other useful links](#other-useful-links)
 
 
 ## Requirements<a name="reqs"></a>
 
 Customer authentication:
-    - (must) signup with google
-    - (must) login with google
-    - (must) get profile
-    - (nice) update nickname
+  - (must) signup with google
+  - (must) login with google
+  - (must) get profile
+  - (nice) update nickname
 
 Exercises input:
-    - (must) create
-        - (must) name
-        - (must) simple description
-        - (must) image
-        - (nice) video
-    - (must) delete
-    - (nice) edit
-    - (nice to have) end to end encryption using google account
-        https://stackoverflow.com/questions/41939884/server-side-google-sign-in-way-to-encrypt-decrypt-data-with-google-managed-secr
-        https://cloud.google.com/docs/security/key-management-deep-dive
-    - (nice) exercises edit
+  - (must) create
+      - (must) name
+      - (must) simple description
+      - (must) image
+      - (nice) video
+  - (must) delete
+  - (nice) edit
+  - (nice to have) end to end encryption using google account
+      https://stackoverflow.com/questions/41939884/server-side-google-sign-in-way-to-encrypt-decrypt-data-with-google-managed-secr
+      https://cloud.google.com/docs/security/key-management-deep-dive
+  - (nice) exercises edit
 
 Schedule builder:
-    - (must) create new daily schedule
-        ie. every x days, can be every second day for example
-    - (must) set reps and sets goal (3 sets 10 reps each)
-    - (must) finish schedule/end it/archive so it's remembered
-    - (nice) timed schedule
-        ie. start, end on the date
-    - (nice) notifications for a workout
-    - (nice) add to google calendar (web)
+  - (must) create new daily schedule
+      ie. every x days, can be every second day for example
+  - (must) set reps and sets goal (3 sets 10 reps each)
+  - (must) finish schedule/end it/archive so it's remembered
+  - (nice) timed schedule
+      ie. start, end on the date
+  - (nice) notifications for a workout
+  - (nice) add to google calendar (web)
 
 
 ## Technology<a name="technology"></a>
 
-React JS (https://www.googlecloudcommunity.com/gc/Community-Blogs/No-servers-no-problem-A-guide-to-deploying-your-React/ba-p/690760)
+1. React JS (https://www.googlecloudcommunity.com/gc/Community-Blogs/No-servers-no-problem-A-guide-to-deploying-your-React/ba-p/690760)
  - install node using brew
  - install npm
  - create react app
-Google Cloud Run
-Go lang for backend
+
+2. Go lang for backend
+3. Google Cloud Run
 
 Authentication:
-    https://developers.google.com/identity/gsi/web/guides/overview
-    (chrome only)https://developers.google.com/privacy-sandbox/cookies/fedcm
+https://developers.google.com/identity/gsi/web/guides/overview
+(chrome only)https://developers.google.com/privacy-sandbox/cookies/fedcm
 
+ ### Docs:
 
-Future considerations:
- - look at using next.js
-
- Docs:
-    ReactJS
-     - https://react.dev/learn/state-as-a-snapshot
-    OAuth
-     - https://auth0.com/blog/critical-vulnerabilities-in-json-web-token-libraries/
-    OAuth Go lang
-     - https://github.com/golang-jwt/jwt?tab=readme-ov-file
+ReactJS
+  - https://react.dev/learn/state-as-a-snapshot
+OAuth
+  - https://auth0.com/blog/critical-vulnerabilities-in-json-web-token-libraries/
+OAuth Go lang
+  - https://github.com/golang-jwt/jwt?tab=readme-ov-file
 
 
 ## Building<a name="building"></a>
@@ -76,34 +73,27 @@ Future considerations:
  - frontend
     ReactJS website
 
-### Run locally<a name="run-locally"></a>
-
-Rebuilding docker with fresh copy of changes is a bit tedious (alternatively can look at pointing to local source when running docker).
-Docker handles passing env variables but without docker need to do it manually (have to be exported):
-
-**Running backend service from `api/` folder:**
-`eval $(sed -e '/^#/d' -e 's/^/export /' -e 's/$/;/' ../.env.development) && go run .`
-
-**Running frontend service from `web/` folder:**
-`eval $(sed -e '/^#/d' -e 's/^/export /' -e 's/$/;/' ../.env.development) && ./run_web.sh`
-
 ### Run on docker<a name="run-docker"></a>
 
 Run command below to recreate container and run:
-// rebuidls
+
 `eval $(sed -e '/^#/d' -e 's/^/export /' -e 's/$/;/' ./.secrets/.env.development) && docker compose watch`
 
 // doesn't rebuild but prints logs as they come
+
 `eval $(sed -e '/^#/d' -e 's/^/export /' -e 's/$/;/' ./.secrets/.env.development) && docker compose up --watch`
 
 // runs printing logs
+
 `... up logs`
 
 
 ### Run on GCP<a name="run-gcp"></a>
 
 IMPORTANT: gcloud dosen't like images built on M1 so have to use `buildx bake` instead
-1. `. ./.secrets/.env.staging && docker buildx bake`
+
+`. ./.secrets/.env.staging && docker buildx bake`
+
 use ` --print` for dry run
 
 Pushing the image to google registry:
@@ -116,59 +106,20 @@ https://cloud.google.com/artifact-registry/docs/docker/pushing-and-pulling
 
 Inspect manifest: `docker manifest inspect gcr.io/learning-gcloud-444623/web:latest`
 
-
-//what's this about? https://www.reddit.com/r/docker/comments/13wgqgz/how_to_specify_provenance_with_docker_compose/
-
-https://medium.com/@francisihe/how-to-get-google-cloud-run-service-url-programmatically-72964e2ce344
-
-
-## Env example<a name="env-example"></a>
-
-```
-ENV=dev
-
-# used for CORS
-WEB_BASE_URL=http://127.0.0.1:3000
-WEB_PORT=3000
-
-# used for JWT cookie
-COOKIE_DOMAIN=127.0.0.1
-
-# used to make API calls from ReactJS
-API_BASE_URL=http://127.0.0.1:8080
-API_PORT=8080
-
-# Google oauth
-GOOGLE_PROJECT_ID=<ID>
-GOOGLE_CLIENT_ID=<CLIENT_ID>
-GOOGLE_CLIENT_SECRET=<CLIENT_SECRET>
-GOOGLE_CLIENT_CALLBACK_URL=http://127.0.0.1:3000
-
-# JWT token keys
-FILE_KEY_PRIVATE=jwtRSA256-private.pem
-FILE_KEY_PUBLIC=jwtRSA256-public.pem
-```
-
-## TODO<a name="todo"></a>
-Shift to secure env service:
-    https://cloud.google.com/secret-manager/docs/create-secret-quickstart
-    ? https://cloud.google.com/run/docs/configuring/services/environment-variables
-
-    https://cloud.google.com/load-balancing/docs/https/setup-global-ext-https-serverless
-    https://cloud.google.com/load-balancing/docs/https/ext-http-lb-tf-module-examples
+## Other useful links<a name="links"></a>
 
 Load balancer the hard way:
-    https://cloud.google.com/blog/topics/developers-practitioners/serverless-load-balancing-terraform-hard-way
+https://cloud.google.com/blog/topics/developers-practitioners/serverless-load-balancing-terraform-hard-way
 
 Region picker:
-    https://googlecloudplatform.github.io/region-picker/
-    https://cloud.google.com/dns/docs/zones
+https://googlecloudplatform.github.io/region-picker/
+https://cloud.google.com/dns/docs/zones
 
 Testing DNS propagation:
-    https://www.whatsmydns.net/#NS
+https://www.whatsmydns.net/#NS
 
 Debugging GOlang with docker container:
-    https://blog.jetbrains.com/go/2020/05/06/debugging-a-go-application-inside-a-docker-container/
+https://blog.jetbrains.com/go/2020/05/06/debugging-a-go-application-inside-a-docker-container/
 
 Adding PostgreSQL:
-    https://blog.logrocket.com/building-simple-app-go-postgresql/
+https://blog.logrocket.com/building-simple-app-go-postgresql/
