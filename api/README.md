@@ -6,3 +6,4 @@ Get public token out of private:
 
 Refs:
  https://techdocs.akamai.com/iot-token-access-control/docs/generate-rsa-keys
+ https://www.alexedwards.net/blog/organising-database-access

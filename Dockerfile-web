@@ -18,6 +18,7 @@ ENV API_BASE_URL=$API_BASE_URL
 
 # Make executable
 RUN chmod +x ./run_web.sh
+RUN ./run_web.sh
 
 # Run the app
-CMD ["./run_web.sh"]
+CMD ["npm", "start"]

@@ -17,10 +17,13 @@ resource "google_cloud_run_v2_service" "web" {
   name     = "web"
   location = var.region
   template {
+    # web is using default cloud run account
+    scaling {
+      max_instance_count = 2
+    }
     containers {
       image = "gcr.io/${var.project_id}/staging-web"
     }
-    service_account = google_service_account.default.email
   }
   deletion_protection = false
 }
@@ -29,11 +32,28 @@ resource "google_cloud_run_v2_service" "web" {
 resource "google_cloud_run_v2_service" "api" {
   name     = "api"
   location = var.region
+  ingress  = "INGRESS_TRAFFIC_ALL"
+
   template {
+    service_account = google_service_account.api.email
+    scaling {
+      max_instance_count = 2
+    }
     containers {
       image = "gcr.io/${var.project_id}/staging-api"
+
+      # Sets a environment variable for instance connection name
+      env {
+        name  = "DB_INSTANCE_CONNECTION_NAME"
+        value = "learning-gcloud-444623:us-west1:postgres-instance-ft-staging"
+      }
     }
-    service_account = google_service_account.default.email
+    volumes {
+      name = "cloudsql"
+      cloud_sql_instance {
+        instances = ["learning-gcloud-444623:us-west1:postgres-instance-ft-staging"]
+      }
+    }
   }
   deletion_protection = false
 }
@@ -46,6 +66,16 @@ data "google_iam_policy" "noauth" {
       "allUsers",
     ]
   }
+}
+
+# SQL client role
+resource "google_project_iam_binding" "cloud_sql_access" {
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+
+  members = [
+    "serviceAccount:${google_service_account.api.email}",
+  ]
 }
 
 # Enable public access on Cloud Run service
@@ -65,7 +95,7 @@ resource "google_cloud_run_service_iam_policy" "api_noauth" {
 }
 
 # Access to secret manager by Cloud Run service
-resource "google_service_account" "default" {
+resource "google_service_account" "api" {
   account_id   = "cloud-run-service-account"
   display_name = "Service account for Cloud Run"
 }
@@ -74,23 +104,24 @@ resource "google_secret_manager_secret_iam_member" "iam_secret_google_oauth_clie
   secret_id = google_secret_manager_secret.secret_google_oauth_client_secret.id
   role      = "roles/secretmanager.secretAccessor"
   # Grant the new deployed service account access to this secret.
-  member     = "serviceAccount:${google_service_account.default.email}"
+  member     = "serviceAccount:${google_service_account.api.email}"
   depends_on = [google_secret_manager_secret.secret_google_oauth_client_secret]
 }
 resource "google_secret_manager_secret_iam_member" "iam_secret_jwt_private_pem" {
   secret_id = google_secret_manager_secret.secret_jwt_private_pem.id
   role      = "roles/secretmanager.secretAccessor"
   # Grant the new deployed service account access to this secret.
-  member     = "serviceAccount:${google_service_account.default.email}"
+  member     = "serviceAccount:${google_service_account.api.email}"
   depends_on = [google_secret_manager_secret.secret_jwt_private_pem]
 }
 resource "google_secret_manager_secret_iam_member" "iam_secret_jwt_public_pem" {
   secret_id = google_secret_manager_secret.secret_jwt_public_pem.id
   role      = "roles/secretmanager.secretAccessor"
   # Grant the new deployed service account access to this secret.
-  member     = "serviceAccount:${google_service_account.default.email}"
+  member     = "serviceAccount:${google_service_account.api.email}"
   depends_on = [google_secret_manager_secret.secret_jwt_public_pem]
 }
+// TODO: split out into a separate TF so can be controlled separately
 # Domain mapping
 # Keep around as once off but we do not want to destroy it once it's created to avoid DNS and cert provisioning delay
 # resource "google_cloud_run_domain_mapping" "web_domain_mapping" {

@@ -92,7 +92,7 @@ Run command below to recreate container and run:
 
 IMPORTANT: gcloud dosen't like images built on M1 so have to use `buildx bake` instead
 
-`. ./.secrets/.env.staging && docker buildx bake`
+`eval $(sed -e '/^#/d' -e 's/^/export /' -e 's/$/;/' ./.secrets/.env.staging) && docker buildx bake`
 
 use ` --print` for dry run
 

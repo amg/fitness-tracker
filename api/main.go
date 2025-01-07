@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fitness-tracker/db"
 	"fitness-tracker/env"
 	"fmt"
 	"io"
@@ -24,16 +25,20 @@ var config env.Config
 func main() {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Printf("Error: %v", r)
+			log.Printf("Error: %v", r)
 		}
 	}()
-	config = *env.LoadEnvVariables()
-	log.Printf("Starting backend on the port: %v", config.Env.ApiPort())
+	config = env.LoadEnvVariables()
+	log.Printf("main: starting backend on the port: %v", config.Env.ApiPort())
 	// starting the server that will listen forever on the port
 	http.HandleFunc("/", rootHandler)
 	http.HandleFunc("/api/auth/google", corsHandler(googleAuthCodeHandler))
 	http.HandleFunc("/authenticated", corsHandler(authenticatedCallHandler))
 	http.HandleFunc("/logout", corsHandler(logoutCallHandler))
+
+	// temp methods
+	http.HandleFunc("/testdb", corsHandler(dbTestHandler))
+	http.HandleFunc("/seeddb", corsHandler(dbSeedHandler))
 
 	log.Fatal(http.ListenAndServe(":"+config.Env.ApiPort(), nil))
 }
@@ -47,6 +52,7 @@ func corsHandler(h http.HandlerFunc) http.HandlerFunc {
 		w.Header().Add("Vary", "Origin")
 		w.Header().Add("Vary", "Access-Control-Request-Method")
 		w.Header().Add("Vary", "Access-Control-Request-Headers")
+		w.Header().Add("Content-Type", "application/json")
 
 		if r.Method == "OPTIONS" {
 			return
@@ -65,7 +71,7 @@ func rootHandler(responseWriter http.ResponseWriter, request *http.Request) {
 		responseWriter.Write([]byte(`(debug)Available endpoints:
             \t/api/auth/google
         `))
-		log.Println(request.URL.Path)
+		log.Printf("main: url=%v", request.URL.Path)
 	}
 }
 
@@ -100,13 +106,57 @@ func logoutCallHandler(responseWriter http.ResponseWriter, request *http.Request
 	responseWriter.Write(a)
 }
 
+func dbTestHandler(responseWriter http.ResponseWriter, request *http.Request) {
+	dbConnection, err := db.InitConnection(config)
+	if err != nil {
+		log.Printf("main: connection to db failed: %v\n", err)
+		http.Error(responseWriter, err.Error(), http.StatusInternalServerError)
+	}
+	defer func() {
+		dbConnection.DB.Close()
+	}()
+
+	repo := db.AuthRepo{Connection: dbConnection}
+
+	data, err := repo.GetSomeRandomData()
+	if err != nil {
+		log.Printf("main: failed to get data: %v\n", err)
+		http.Error(responseWriter, err.Error(), http.StatusInternalServerError)
+	}
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		log.Printf("main: failed to marshal data: %v\n", err)
+		http.Error(responseWriter, err.Error(), http.StatusInternalServerError)
+	}
+	responseWriter.Write(jsonData)
+
+}
+func dbSeedHandler(responseWriter http.ResponseWriter, request *http.Request) {
+	dbConnection, err := db.InitConnection(config)
+	if err != nil {
+		log.Printf("main: connection to db failed: %v\n", err)
+		http.Error(responseWriter, err.Error(), http.StatusInternalServerError)
+	}
+	defer func() {
+		dbConnection.DB.Close()
+	}()
+
+	repo := db.AuthRepo{Connection: dbConnection}
+
+	err = repo.Seed()
+	if err != nil {
+		log.Printf("main: failed to get data: %v\n", err)
+		http.Error(responseWriter, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 /**
 * Validates token consistently. Call in all authenticated calls.
  */
 func validateToken(responseWriter http.ResponseWriter, request *http.Request) error {
 	jwtCookie, err := request.Cookie(HEADER_JWT)
 	if err != nil {
-		log.Printf("Token is missing: %v\n", err)
+		log.Printf("main: token is missing: %v\n", err)
 		http.Error(responseWriter, err.Error(), http.StatusUnauthorized)
 		return err
 	}
@@ -122,7 +172,7 @@ func validateToken(responseWriter http.ResponseWriter, request *http.Request) er
 	})
 
 	if !parsed.Valid {
-		log.Printf("Token verification failed: %v\n", err)
+		log.Printf("main: token verification failed: %v\n", err)
 		http.Error(responseWriter, err.Error(), http.StatusUnauthorized)
 		return err
 	}
@@ -152,7 +202,7 @@ func googleAuthCodeHandler(responseWriter http.ResponseWriter, request *http.Req
 	// respond to the client with the error message and a 400 status code.
 	body, err := io.ReadAll(request.Body)
 	if err != nil {
-		log.Printf("Reading authCode failed: %v\n", err)
+		log.Printf("main: reading authCode failed: %v\n", err)
 		http.Error(responseWriter, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -160,7 +210,7 @@ func googleAuthCodeHandler(responseWriter http.ResponseWriter, request *http.Req
 	var authCode GoogleAuthCodeInput
 	err = json.Unmarshal(body, &authCode)
 	if err != nil {
-		log.Printf("Decoding authCode failed: %v; body: %v\n", err, body)
+		log.Printf("main: decoding authCode failed: %v; body: %v\n", err, body)
 		http.Error(responseWriter, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -168,7 +218,7 @@ func googleAuthCodeHandler(responseWriter http.ResponseWriter, request *http.Req
 	// got authcode for Google, request tokens and store them in db
 	googleTokens, err := googleOneOffTokenExchange(authCode)
 	if err != nil {
-		log.Printf("Google token exchange for session failed: %v\n", err)
+		log.Printf("main: google token exchange for session failed: %v\n", err)
 		http.Error(responseWriter, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -176,18 +226,18 @@ func googleAuthCodeHandler(responseWriter http.ResponseWriter, request *http.Req
 	// generate user in db and add Gtokens
 	info, err := googleGetProfileInfo(googleTokens)
 	if err != nil {
-		log.Printf("Google profile read failed: %v\n", err)
+		log.Printf("main: google profile read failed: %v\n", err)
 		http.Error(responseWriter, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.Printf("Customer's info: %v\n", *info)
+	log.Printf("main: customer's info: %v\n", *info)
 	//TODO: add info to DB along with refresh token
 
 	// generating only jwt token for now. Using Google Id as subject in token
 	now := time.Now()
 	serverJWTToken, err := jwtWithCustomClaims(info.Id, now)
 	if err != nil {
-		log.Printf("JWT server token generated: %v\n", err)
+		log.Printf("main: JWT server token generated: %v\n", err)
 		http.Error(responseWriter, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -204,7 +254,7 @@ func googleAuthCodeHandler(responseWriter http.ResponseWriter, request *http.Req
 	})
 	profile, err := json.Marshal(info)
 	if err != nil {
-		log.Printf("Failed to marshal profile: %v\n", err)
+		log.Printf("main: failed to marshal profile: %v\n", err)
 		http.Error(responseWriter, err.Error(), http.StatusInternalServerError)
 	}
 	responseWriter.Write(profile)
@@ -231,7 +281,7 @@ func googleOneOffTokenExchange(authCode GoogleAuthCodeInput) (token *oauth2.Toke
 	// Use code to get googleTokens and get user info from Google.
 	googleTokens, err := googleOauthConfig.Exchange(context.Background(), authCode.Code)
 	if err != nil {
-		log.Printf("Exchange of authcode (%v) failed: %v\n", authCode.Code, err)
+		log.Printf("main: exchange of authcode (%v) failed: %v\n", authCode.Code, err)
 		return nil, err
 	}
 
@@ -253,20 +303,20 @@ const oauthGoogleUrlAPI = "https://www.googleapis.com/oauth2/v2/userinfo?access_
 func googleGetProfileInfo(googleTokens *oauth2.Token) (profileInfo *GoogleProfileInfo, err error) {
 	response, err := http.Get(oauthGoogleUrlAPI + googleTokens.AccessToken)
 	if err != nil {
-		log.Println("Getting profile data failed")
+		log.Println("main: getting profile data failed")
 		return nil, err
 	}
 	defer response.Body.Close()
 	contents, err := io.ReadAll(response.Body)
 	if err != nil {
-		log.Println("Reading profile data failed")
+		log.Println("main: reading profile data failed")
 		return nil, err
 	}
 
 	var googleProfileInfo GoogleProfileInfo
 	err = json.Unmarshal(contents, &googleProfileInfo)
 	if err != nil {
-		log.Println("Reading profile data failed")
+		log.Println("main: reading profile data failed")
 		return nil, err
 	}
 	return &googleProfileInfo, err

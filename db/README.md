@@ -15,9 +15,11 @@ Inspect to find network ip address (required?)
 
 Server add, password as above and username `postgres`
 
-
-
+Unix socks connection for postgres on gcloud run + sql auth proxy
+`TF_VAR_postgres_fullstring='host=/cloudsql/learning-gcloud-444623:us-west1:postgres-instance-ft-staging user=%s password=%s dbname=%s sslmode=disable'`
 
 
 Refs:
+ - https://medium.com/google-cloud/managing-cloud-sql-resources-with-terraform-76cc044319e9
  - https://squaredup.com/blog/running-postgres-in-docker/
+ - https://cloud.google.com/sql/docs/mysql/connect-run#terraform_1

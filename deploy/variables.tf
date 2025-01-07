@@ -12,4 +12,27 @@ variable "region" {
 variable "seed_secret_google_oauth_secret" {
   type        = string
   description = "OAuth secret to init in the Secrets manager"
+  sensitive   = true
+}
+
+# db variables
+variable "postgres_dbname" {
+  type        = string
+  description = "PostgreSQL dbname to init in the Secrets manager"
+  sensitive   = true
+}
+variable "postgres_user" {
+  type        = string
+  description = "PostgreSQL user to init in the Secrets manager"
+  sensitive   = true
+}
+variable "postgres_password" {
+  type        = string
+  description = "PostgreSQL password to init in the Secrets manager"
+  sensitive   = true
+}
+variable "postgres_fullstring" {
+  type        = string
+  description = "PostgreSQL full string"
+  sensitive   = true
 }

@@ -15,10 +15,10 @@ services:
         - WEB_BASE_URL=${WEB_BASE_URL}
         - FILE_KEY_PRIVATE=${FILE_KEY_PRIVATE}
         - FILE_KEY_PUBLIC=${FILE_KEY_PUBLIC}
-        # - PG_DBNAME=postgres
-        # - PG_HOST=db
-        # - PG_USER=postgres
-        # - PG_PASSWORD=mysecretpassword
+        - POSTGRES_URL=${POSTGRES_URL}
+        - POSTGRES_DBNAME=${POSTGRES_DBNAME}
+        - POSTGRES_USER=${POSTGRES_USER}
+        - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       x-bake:
         platforms:
           - linux/amd64
@@ -55,15 +55,16 @@ services:
         - action: sync
           path: ./web
           target: /app
-  # db:
-  #   image: postgres:12-alpine
-  #   restart: always
-  #   environment:
-  #     - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-  #   ports:
-  #     - 5432:5432
-  #   volumes:
-  #     - db-data:/var/lib/postgresql/data
-# volumes:
-#   backend-cache: {}
-#   db-data: {}
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DBNAME}
+    ports:
+      - 5432:5432
+    volumes:
+      - db-data:/var/lib/postgresql/data
+volumes:
+  db-data: {}
