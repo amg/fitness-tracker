@@ -9,13 +9,6 @@ variable "region" {
   # using us-west so custom domain mapping works
   default = "us-west1"
 }
-variable "seed_secret_google_oauth_secret" {
-  type        = string
-  description = "OAuth secret to init in the Secrets manager"
-  sensitive   = true
-}
-
-# db variables
 // from common/.variables_resources
 variable "resource_db_instance_name" {
   type        = string

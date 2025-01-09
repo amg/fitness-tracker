@@ -99,9 +99,10 @@ use ` --print` for dry run
 Pushing the image to google registry:
 https://cloud.google.com/artifact-registry/docs/docker/pushing-and-pulling
 
-1. (if required)`gcloud auth configure-docker`
+1. (if required)`./deploy_core.sh -a`
 2. (from `deploy/`) `. ./.secrets/.env.staging && docker compose push`
-3. (from `deploy/`) `eval $(sed -e '/^#/d' -e 's/^/export /' -e 's/$/;/' ../.secrets/.deploy.env) && terraform plan` + `apply`
+3. (if required) `./deploy_core.sh -m apply`
+4. `./deploy_main.sh -m apply`
 
 
 Inspect manifest: `docker manifest inspect gcr.io/learning-gcloud-444623/web:latest`

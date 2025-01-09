@@ -1,0 +1,3 @@
+TF_VAR_resource_db_instance_name='postgres-instance-ft-staging'
+TF_VAR_resource_service_api_name='api'
+TF_VAR_resource_service_web_name='web'
