@@ -93,8 +93,14 @@ https://cloud.google.com/artifact-registry/docs/docker/pushing-and-pulling
 
 1. (if required)`./deploy_core.sh -a`
 2. (from `deploy/`) `. ./.secrets/.env.staging && docker compose push`
-3. (if required) `./deploy_core.sh -m apply`
-4. `./deploy_main.sh -m apply`
+3. `./deploy_main.sh -m apply` (yes before core, see below)
+4. (if required) `./deploy_core.sh -m apply`
+
+Core sort of depends on Main because Terraform complains if services are not there before creating mapping.
+But for development mappings take time to re-provision certs (20min+) so we do not want to bring those down every time.
+Mappings will reconnect automagically once services are up.
+
+Core also contains DB which also takes 15+ min to create.
 
 
 Inspect manifest: `docker manifest inspect gcr.io/learning-gcloud-444623/web:latest`

@@ -9,9 +9,6 @@ resource "google_cloud_run_domain_mapping" "web_domain_mapping" {
   spec {
     route_name = var.resource_service_web_name
   }
-  lifecycle {
-    prevent_destroy = true
-  }
 }
 
 resource "google_cloud_run_domain_mapping" "api_domain_mapping" {
@@ -22,9 +19,6 @@ resource "google_cloud_run_domain_mapping" "api_domain_mapping" {
   }
   spec {
     route_name = var.resource_service_api_name
-  }
-  lifecycle {
-    prevent_destroy = true
   }
 }
 # Re-add after testing this works well manually from console

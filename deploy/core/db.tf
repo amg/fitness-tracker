@@ -1,7 +1,8 @@
 # ------- db itself
 resource "google_sql_database_instance" "postgres" {
-  name                = var.resource_db_instance_name
-  database_version    = "POSTGRES_15"
+  name             = var.resource_db_instance_name
+  database_version = "POSTGRES_15"
+  // change to true in prod
   deletion_protection = false
 
   settings {
