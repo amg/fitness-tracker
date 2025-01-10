@@ -1,11 +1,19 @@
+- [Context](#context)
 - [Requirements](#requirements)
 - [Technology](#technology)
-  - [Docs:](#docs)
 - [Building](#building)
   - [Run on docker](#run-on-docker)
   - [Run on GCP](#run-on-gcp)
 - [Other useful links](#other-useful-links)
 
+## Context
+
+This project is meant as a playground for learning Full-Stack development but it is my hope that it will continue to evolve into something useful one day.
+
+It is dockerized and ready for deployment in GCP.
+See docker-compose.yml and /deploy Terraform files.
+
+Terraform has currently some sections commented out to speed up iteration but for initial run, they are required.
 
 ## Requirements<a name="reqs"></a>
 
@@ -23,9 +31,7 @@ Exercises input:
       - (nice) video
   - (must) delete
   - (nice) edit
-  - (nice to have) end to end encryption using google account
-      https://stackoverflow.com/questions/41939884/server-side-google-sign-in-way-to-encrypt-decrypt-data-with-google-managed-secr
-      https://cloud.google.com/docs/security/key-management-deep-dive
+  - (nice) end to end encryption using google account
   - (nice) exercises edit
 
 Schedule builder:
@@ -41,37 +47,23 @@ Schedule builder:
 
 ## Technology<a name="technology"></a>
 
-1. React JS (https://www.googlecloudcommunity.com/gc/Community-Blogs/No-servers-no-problem-A-guide-to-deploying-your-React/ba-p/690760)
- - install node using brew
- - install npm
- - create react app
-
-2. Go lang for backend
-3. Google Cloud Run
-
-Authentication:
-https://developers.google.com/identity/gsi/web/guides/overview
-(chrome only)https://developers.google.com/privacy-sandbox/cookies/fedcm
-
- ### Docs:
-
-ReactJS
-  - https://react.dev/learn/state-as-a-snapshot
-OAuth
-  - https://auth0.com/blog/critical-vulnerabilities-in-json-web-token-libraries/
-OAuth Go lang
-  - https://github.com/golang-jwt/jwt?tab=readme-ov-file
-
+1. React JS for FE (frontend)
+2. Go lang for BE (backend)
+3. Google Cloud (infrastructure)
+4. Docker
 
 ## Building<a name="building"></a>
 
-`docker-compose.yaml` declares the services and `.env.development` (and others) specify some env variables.
+Main entry point `docker-compose.yaml`
 
-2 services:
+3 services:
  - api
     GO lang api service
  - frontend
     ReactJS website
+ - postres DB
+
+`.secrets` folder is required to specify multiple variables used by the stack but not committed to the source code. Can copy starting point from `secrets-example` and fill in the blanks.
 
 ### Run on docker<a name="run-docker"></a>
 
@@ -109,18 +101,43 @@ Inspect manifest: `docker manifest inspect gcr.io/learning-gcloud-444623/web:lat
 
 ## Other useful links<a name="links"></a>
 
-Load balancer the hard way:
+ReactJS
+
+https://react.dev/learn/state-as-a-snapshot
+
+OAuth
+
+https://auth0.com/blog/critical-vulnerabilities-in-json-web-token-libraries/
+
+OAuth Go lang
+
+https://github.com/golang-jwt/jwt?tab=readme-ov-file
+
+
+Load balancer the hard way
+
 https://cloud.google.com/blog/topics/developers-practitioners/serverless-load-balancing-terraform-hard-way
 
-Region picker:
+Region picker
+
 https://googlecloudplatform.github.io/region-picker/
 https://cloud.google.com/dns/docs/zones
 
-Testing DNS propagation:
+Testing DNS propagation
+
 https://www.whatsmydns.net/#NS
 
-Debugging GOlang with docker container:
+Debugging GOlang with docker container
+
 https://blog.jetbrains.com/go/2020/05/06/debugging-a-go-application-inside-a-docker-container/
 
-Adding PostgreSQL:
+Adding PostgreSQL
+
 https://blog.logrocket.com/building-simple-app-go-postgresql/
+
+Useful on security
+
+https://stackoverflow.com/questions/41939884/server-side-google-sign-in-way-to-encrypt-decrypt-data-with-google-managed-secr
+
+
+https://cloud.google.com/docs/security/key-management-deep-dive
