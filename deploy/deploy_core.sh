@@ -7,22 +7,15 @@ helpFunction()
    echo "Using global TF_VARs to align some of the dependencies"
    echo "Usage: $0 -m plan/apply/destroy"
    echo -e "\t-m Mode for Terraform: plan or apply"
-   echo -e "\t-a authenticate docker to gcloud"
+   echo ""
+   echo -e "\t(auth) gcloud auth configure-docker"
    exit 1 # Exit script after printing help
-}
-
-authenticate()
-{
-    echo "Authenticating:"
-    gcloud auth configure-docker
-    exit 1 # Exit script after authenticating
 }
 
 while getopts "m:a:" opt
 do
    case "$opt" in
       m ) mode="$OPTARG" ;;
-      a ) authenticate ;;
       ? ) helpFunction ;; # Print helpFunction in case parameter is non-existent
    esac
 done
