@@ -67,32 +67,22 @@ Main entry point `docker-compose.yaml`
 
 ### Run on docker<a name="run-docker"></a>
 
-Run command below to recreate container and run:
+Script to build. See script for details:<br/>
+`./build.sh -a build -e dev -p arm`
 
-`eval $(sed -e '/^#/d' -e 's/^/export /' -e 's/$/;/' ./.secrets/.env.development) && docker compose watch`
+Script to watch:<br/>
+`./build.sh -a watch -e dev`
 
-// doesn't rebuild but prints logs as they come
-
-`eval $(sed -e '/^#/d' -e 's/^/export /' -e 's/$/;/' ./.secrets/.env.development) && docker compose up --watch`
-
-// runs printing logs
-
-`... up logs`
-
+Script to log:<br/>
+`./build.sh -a logs -e dev`
 
 ### Run on GCP<a name="run-gcp"></a>
 
 IMPORTANT: gcloud dosen't like images built on M1 so have to use `buildx bake` instead
 
-`eval $(sed -e '/^#/d' -e 's/^/export /' -e 's/$/;/' ./.secrets/.env.staging) && docker buildx bake`
-
-use ` --print` for dry run
-
-Pushing the image to google registry:
-https://cloud.google.com/artifact-registry/docs/docker/pushing-and-pulling
-
-1. (if required)`./deploy_core.sh -a`
-2. (from `deploy/`) `. ./.secrets/.env.staging && docker compose push`
+1. (if required)`gcloud auth configure-docker`
+2. Script to build and push to registry. See script for details:<br/>
+`./build.sh -a build -e staging -p amd -u true`
 3. `./deploy_main.sh -m apply` (yes before core, see below)
 4. (if required) `./deploy_core.sh -m apply`
 

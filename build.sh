@@ -18,11 +18,28 @@ helpFunction()
    exit 1 # Exit script after printing help
 }
 
+setEnvPath()
+{
+    if [ "$env" == "dev" ]; then
+        echo -e "${G}Using $env environment${NC}";
+        envPath="./.secrets/.env.development"
+    elif [ "$env" == "staging" ]; then
+        echo -e  "${G}Using $env environment${NC}";
+        envPath="./.secrets/.env.staging"
+    else
+        echo -e  "${R}Incorrect environment parameter${NC}";
+        helpFunction    
+    fi
+}
+
 # Ignores secrets used:
 #  dev build is just local so secrets are passed using env variables (not secure but local)
 #  staging build is declaring same dockerfile but actually doesn't get passed in any secure params
 #   instead it is using GCP secrets store, but docker is still complaining
 buildArgs="--set "*.args.BUILDKIT_DOCKERFILE_CHECK=skip=SecretsUsedInArgOrEnv""
+
+# Global variable since shell doesn't allow proper return from functions
+envPath=""
 
 while getopts "a:e:m:p:u:" opt
 do
@@ -47,19 +64,9 @@ if [ "$action" != "build" ] && [ "$action" != "watch" ] && [ "$action" != "logs"
    helpFunction
 fi
 
-if [ "$action" == "build" ]
-then
-    if [ "$env" == "dev" ]; then
-        echo -e "${G}Building $env environment${NC}";
-        envPath="./.secrets/.env.development"
-    elif [ "$env" == "staging" ]; then
-        echo -e  "${G}Building $env environment${NC}";
-        envPath="./.secrets/.env.staging"
-    else
-        echo -e  "${R}Incorrect environment parameter${NC}";
-        helpFunction    
-    fi
-
+if [ "$action" == "build" ]; then
+    setEnvPath
+    echo -e  "${G}Building${NC}"
     platformOverride=""
     if [ "$platform" == "arm" ]; then
         platformOverride="--set *.platform=linux/arm64"
@@ -70,7 +77,7 @@ then
     else
         echo -e  "${O}Platform override ignored. Building for both arm and amd${NC}"
     fi
-    
+
     dryRun=""
     if [ "$mode" == "dry" ]; then
         dryRun="--print"
@@ -82,9 +89,17 @@ then
         pushCommand="--push"
         echo -e  "${G}Push to registry after building${NC}"
     fi
-    
+
     echo -e "\n"
     eval $(sed -e '/^#/d' -e 's/^/export /' -e 's/$/;/' $envPath) && docker buildx bake $platformOverride $dryRun $pushCommand $buildArgs
+elif [ "$action" == "watch" ] ; then
+    setEnvPath
+    echo -e  "${G}Watching${NC}"
+    eval $(sed -e '/^#/d' -e 's/^/export /' -e 's/$/;/' $envPath) && docker compose up --watch
+elif [ "$action" == "logs" ] ; then
+    setEnvPath
+    echo -e  "${G}Logs${NC}"
+    eval $(sed -e '/^#/d' -e 's/^/export /' -e 's/$/;/' $envPath) && docker compose logs
 else
     echo -e  "${R}Incorrect action parameter${NC}";
     helpFunction
