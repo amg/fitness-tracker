@@ -1,28 +1,21 @@
-import React, { useEffect } from 'react';
 import { googleLogout, useGoogleLogin } from '@react-oauth/google';
 import Button from '@mui/material/Button';
 
+import { AuthState } from '../helpers/authContext'
+import { useGlobalAuthContext } from '../App'
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const apiBaseUrl = window.env.API_BASE_URL
 
-class AuthStore {
-    constructor() { }
-
-    static get name() {
-        const json = JSON.parse(localStorage.getItem('auth_user'))
-        return json ? json.name : null;
-    }
-    static set name(value) {
-        localStorage.setItem('auth_user', JSON.stringify({ name: value }));
-    }
+class AuthProps {
+    constructor(
+        public onUnauthenticated: (data: string | null) => void
+    ) {}
 }
 
-
-function AuthComponent({profile, setProfile, onUnauthenticated}) {
-    // Retrieving and parsing the object from LocalStorage
-    useEffect(() => {
-        setProfile({ name: AuthStore.name });
-    }, [setProfile, AuthStore.name]);
-
+function AuthComponent(props: AuthProps) {
+    const authContext = useGlobalAuthContext();
+    
     const googleLogin = useGoogleLogin({
         onSuccess: (codeResponse) => {
             // Send the authorization code to the backend server
@@ -39,8 +32,7 @@ function AuthComponent({profile, setProfile, onUnauthenticated}) {
             })
                 .then(response => response.json())
                 .then(data => {
-                    AuthStore.name = data.name
-                    setProfile({ name: AuthStore.name });
+                    authContext.setAuthState(AuthState.newState(data.name))
                 })
                 .catch(error => {
                     console.error('Error:', error);
@@ -65,11 +57,11 @@ function AuthComponent({profile, setProfile, onUnauthenticated}) {
             body: JSON.stringify({}),
         })
             .then(response => response.json())
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             .then(data => {
                 googleLogout();
-                setProfile(null);
-                AuthStore.name = null
-                onUnauthenticated()
+                authContext.setAuthState(null)
+                props.onUnauthenticated("Logged out")
             })
             .catch(error => {
                 console.error('Error:', error);
@@ -78,10 +70,10 @@ function AuthComponent({profile, setProfile, onUnauthenticated}) {
 
     return (
         <div className="popup">
-            {profile?.name ? (
+            {authContext.state?.profile?.name ? (
                 <div>
                     <h3>User Logged in</h3>
-                    <p>Name: {profile.name}</p>
+                    <p>Name: {authContext.state.profile.name}</p>
                     <br />
                     <br />
                     <Button variant="contained" size="small" color="error" onClick={() => logOut()}>Logout</Button>
@@ -96,4 +88,4 @@ function AuthComponent({profile, setProfile, onUnauthenticated}) {
     );
 }
 
-export { AuthComponent, AuthStore};
+export default AuthComponent;
