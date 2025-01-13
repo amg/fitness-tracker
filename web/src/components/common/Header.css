@@ -1,0 +1,23 @@
+nav {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin: 0;
+}
+nav > a {
+    margin: 8px;
+}
+.spacer {
+    flex: 1;
+}
+nav img {
+    width: 24px;
+    border-radius: 50%;
+}
+.account {
+    display: flex;
+    justify-content: space-between;
+}
+.account > * {
+    margin: 0 4px;
+}

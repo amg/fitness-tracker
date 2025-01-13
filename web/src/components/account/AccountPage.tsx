@@ -1,19 +1,13 @@
 import { googleLogout, useGoogleLogin } from '@react-oauth/google';
 import Button from '@mui/material/Button';
 
-import { AuthState } from '../helpers/authContext'
-import { useGlobalAuthContext } from '../App'
+import { AuthState } from '../../helpers/authContext'
+import { useGlobalAuthContext } from '../../helpers/authContext'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const apiBaseUrl = window.env.API_BASE_URL
 
-class AuthProps {
-    constructor(
-        public onUnauthenticated: (data: string | null) => void
-    ) {}
-}
-
-function AuthComponent(props: AuthProps) {
+function AuthComponent() {
     const authContext = useGlobalAuthContext();
     
     const googleLogin = useGoogleLogin({
@@ -32,7 +26,7 @@ function AuthComponent(props: AuthProps) {
             })
                 .then(response => response.json())
                 .then(data => {
-                    authContext.setAuthState(AuthState.newState(data.name))
+                    authContext.setAuthState(AuthState.newState(data.name, data.picture))
                 })
                 .catch(error => {
                     console.error('Error:', error);
@@ -61,7 +55,6 @@ function AuthComponent(props: AuthProps) {
             .then(data => {
                 googleLogout();
                 authContext.setAuthState(null)
-                props.onUnauthenticated("Logged out")
             })
             .catch(error => {
                 console.error('Error:', error);
@@ -69,22 +62,22 @@ function AuthComponent(props: AuthProps) {
     };
 
     return (
-        <div className="popup">
-            {authContext.state?.profile?.name ? (
-                <div>
-                    <h3>User Logged in</h3>
-                    <p>Name: {authContext.state.profile.name}</p>
-                    <br />
-                    <br />
-                    <Button variant="contained" size="small" color="error" onClick={() => logOut()}>Logout</Button>
-                    <br />
-                </div>
-            ) : (
-                <>
-                    <Button variant="contained" size="small" color="success" onClick={() => googleLogin()}>Sign in with Google 🚀</Button>
-                </>
-            )}
-        </div>
+        <>
+        {authContext.state?.profile?.name ? (
+            <div>
+                <h3>User Logged in</h3>
+                <p>Name: {authContext.state.profile.name}</p>
+                <br />
+                <br />
+                <Button variant="contained" size="small" color="error" onClick={() => logOut()}>Logout</Button>
+                <br />
+            </div>
+        ) : (
+            <>
+                <Button variant="contained" size="small" color="success" onClick={() => googleLogin()}>Sign in with Google 🚀</Button>
+            </>
+        )}
+        </>
     );
 }
 

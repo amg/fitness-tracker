@@ -1,3 +1,5 @@
+import React, { useContext } from 'react'
+
 const keys = {
     auth: "auth_user"
 }
@@ -5,6 +7,15 @@ const keys = {
 interface IStateSetter {
     (newState: AuthState | null): void
 }
+
+export const GlobalAuthContext = React.createContext<AuthContext | null>(null);
+// The `| null` will be removed via the check in the Hook.
+export const useGlobalAuthContext = () => {
+    const object = useContext(GlobalAuthContext);
+    if (!object) { throw new Error("useGlobalAuthContext must be used within a Provider") }
+    return object;
+  }
+
 
 class AuthContext {
     constructor(public state: AuthState | null, private setState: IStateSetter){}
@@ -27,13 +38,13 @@ class AuthContext {
 
 class AuthState {
     constructor(public profile: Profile) {}
-    static newState(name: string): AuthState {
-        return new AuthState(new Profile(name))
+    static newState(name: string, url: string | null): AuthState {
+        return new AuthState(new Profile(name, url))
     }
 }
 
 class Profile {
-    constructor(public name: string){}
+    constructor(public name: string, public url: string | null){}
 }
 
 export { AuthState }
