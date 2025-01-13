@@ -1,6 +1,7 @@
 - [Context](#context)
 - [Requirements](#requirements)
 - [Technology](#technology)
+  - [High level view:](#high-level-view)
 - [Building](#building)
   - [Run on docker](#run-on-docker)
   - [Run on GCP](#run-on-gcp)
@@ -51,6 +52,11 @@ Schedule builder:
 2. Go lang for BE (backend)
 3. Google Cloud (infrastructure)
 4. Docker
+
+<br />
+
+### High level view:
+![High level view](./docs/high-level-arch.png)
 
 ## Building<a name="building"></a>
 
