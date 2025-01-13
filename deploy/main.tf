@@ -12,6 +12,102 @@ provider "google" {
   region  = var.region
 }
 
+
+module "lb-http" {
+  source  = "terraform-google-modules/lb-http/google//modules/serverless_negs"
+  version = "~> 12.0"
+
+  name    = var.lb_name
+  project = var.project_id
+
+  ssl                             = true
+  managed_ssl_certificate_domains = ["web.fitnesstracker.alexlearningcloud.dev", "api.fitnesstracker.alexlearningcloud.dev"]
+  https_redirect                  = true
+
+  backends = {
+    web = {
+      description = null
+      groups = [
+        {
+          group = google_compute_region_network_endpoint_group.web_neg.id
+        }
+      ]
+      enable_cdn = false
+
+      iap_config = {
+        enable = false
+      }
+      log_config = {
+        enable = false
+      }
+    },
+    api = {
+      description = null
+      groups = [
+        {
+          group = google_compute_region_network_endpoint_group.api_neg.id
+        }
+      ]
+      enable_cdn = false
+
+      iap_config = {
+        enable = false
+      }
+      log_config = {
+        enable = false
+      }
+    }
+  }
+}
+
+resource "google_compute_region_network_endpoint_group" "web_neg" {
+  provider              = google-beta
+  project               = var.project_id
+  name                  = "cloudrun-web-neg"
+  network_endpoint_type = "SERVERLESS"
+  region                = var.region
+  cloud_run {
+    service = google_cloud_run_v2_service.web.name
+  }
+}
+
+resource "google_compute_region_network_endpoint_group" "api_neg" {
+  provider              = google-beta
+  project               = var.project_id
+  name                  = "cloudrun-api-neg"
+  network_endpoint_type = "SERVERLESS"
+  region                = var.region
+  cloud_run {
+    service = google_cloud_run_v2_service.api.name
+  }
+}
+# For now done manually, figure out how to attach this to the LB
+# resource "google_compute_url_map" "main" {
+#   name            = "url-map-main"
+#   default_service = google_compute_region_network_endpoint_group.web_neg.name
+
+#   host_rule {
+#     hosts        = ["web.fitnesstracker.alexlearningcloud.dev"]
+#     path_matcher = "web"
+#   }
+
+#   host_rule {
+#     hosts        = ["api.fitnesstracker.alexlearningcloud.dev"]
+#     path_matcher = "api"
+#   }
+
+#   path_matcher {
+#     name            = "web"
+#     default_service = google_compute_region_network_endpoint_group.web_neg.name
+#   }
+
+#   path_matcher {
+#     name            = "api"
+#     default_service = google_compute_region_network_endpoint_group.api_neg.name
+#   }
+# }
+
+
 # Deploy image to Cloud Run
 resource "google_cloud_run_v2_service" "web" {
   name     = "web"
@@ -31,6 +127,7 @@ resource "google_cloud_run_v2_service" "web" {
       }
     }
   }
+
   deletion_protection = false
 }
 
@@ -61,6 +158,7 @@ resource "google_cloud_run_v2_service" "api" {
       }
     }
   }
+
   deletion_protection = false
 }
 

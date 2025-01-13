@@ -47,3 +47,9 @@ variable "postgres_password" {
   description = "PostgreSQL password to init in the Secrets manager"
   sensitive   = true
 }
+
+// Load balancing
+variable "lb_name" {
+  description = "Name for load balancer and associated resources"
+  default     = "tf-cr-lb"
+}
