@@ -23,6 +23,12 @@ resource "google_cloud_run_v2_service" "web" {
     }
     containers {
       image = "gcr.io/${var.project_id}/staging-web"
+      resources {
+        limits = {
+          cpu    = "1"
+          memory = "1024Mi"
+        }
+      }
     }
   }
   deletion_protection = false
