@@ -98,6 +98,13 @@ Mappings will reconnect automagically once services are up.
 
 Core also contains DB which also takes 15+ min to create.
 
+IMPORTANT: Extra steps to make this run.
+Since switching from experimental cloud run domain mapping to external Load Balancer few steps became manual:
+1. once LB is up, declare 2 A records in Cloud DNS for api and web endpoints pointing to that LB
+2. Load balancer mapping is not specified in Terraform, edit load balancer and add routes manually 
+Edit classic application load balancer -> Host and path rules (path /*, host [api/web].domain.you.own.com)
+3. Wait for a while, check certificate provisioning process, will be a link in Frontend of LB (up to 24 hours)
+
 
 Inspect manifest: `docker manifest inspect gcr.io/learning-gcloud-444623/web:latest`
 
