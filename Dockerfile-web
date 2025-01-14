@@ -12,6 +12,7 @@ RUN npm install
  
 # Copy the rest of your application files
 COPY ./web .
+COPY ./docs/high-level-arch.png /app/public/
 
 ARG API_BASE_URL
 ENV API_BASE_URL=$API_BASE_URL
