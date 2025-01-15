@@ -1,0 +1,48 @@
+# Use an official Node.js runtime as a parent image
+FROM node:18-alpine as builder
+
+# Set the working directory in the container
+WORKDIR /app
+
+ARG ENV
+ENV ENV=${ENV}
+
+ARG SECRETS_PATH
+ENV SECRETS_PATH=${SECRETS_PATH}
+ARG NODE_API_PORT
+ENV NODE_API_PORT=${NODE_API_PORT}
+ARG WEB_BASE_URL
+ENV WEB_BASE_URL=${WEB_BASE_URL}
+ARG POSTGRES_URL
+ENV POSTGRES_URL=${POSTGRES_URL}
+ARG POSTGRES_DBNAME
+ENV POSTGRES_DBNAME=${POSTGRES_DBNAME}
+ARG POSTGRES_USER
+ENV POSTGRES_USER=${POSTGRES_USER}
+ARG POSTGRES_PASSWORD
+ENV POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+
+# Copy all files from the current directory to the working directory
+COPY ./node-api/ .
+
+# Install app dependencies
+RUN npm install
+
+# ------ Development stage
+FROM builder as dev
+
+# Set NODE_ENV to production
+ENV NODE_ENV=development
+
+# Command to run the application(in development)
+CMD ["npm", "run", "start:dev"]
+
+# ------ Staging stage
+FROM builder as staging
+
+# Set NODE_ENV to production
+ENV NODE_ENV=production
+
+# Run the production command
+CMD ["npm", "start"]
+

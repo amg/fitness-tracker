@@ -34,6 +34,35 @@ services:
         - action: sync+restart
           path: ./api
           target: /app
+  node-api:
+    build:
+      context: ./
+      dockerfile: ./Dockerfile-node-api
+      target: ${ENV}
+      args:
+        - ENV=${ENV}
+        - SECRETS_PATH=${SECRETS_PATH}
+        - NODE_API_PORT=${NODE_API_PORT}
+        - WEB_BASE_URL=${WEB_BASE_URL}
+        - POSTGRES_URL=${POSTGRES_URL}
+        - POSTGRES_DBNAME=${POSTGRES_DBNAME}
+        - POSTGRES_USER=${POSTGRES_USER}
+        - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      x-bake:
+        platforms:
+          - linux/amd64
+          - linux/arm64
+    ports:
+      - "${NODE_API_PORT}:${NODE_API_PORT}"
+    image: "gcr.io/${GOOGLE_PROJECT_ID}/${ENV}-node-api" 
+    # depends_on:
+    #   - db
+    command: npm start
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./node-api
+          target: /app
   frontend:
     build:
       context: ./
