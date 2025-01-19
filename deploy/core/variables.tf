@@ -14,14 +14,6 @@ variable "resource_db_instance_name" {
   type        = string
   description = "Cloud SQL instance name"
 }
-variable "resource_service_api_name" {
-  type        = string
-  description = "service name"
-}
-variable "resource_service_web_name" {
-  type        = string
-  description = "service name"
-}
 // from .secrets/.deploy.env
 variable "postgres_dbname" {
   type        = string

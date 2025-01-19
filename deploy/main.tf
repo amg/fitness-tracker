@@ -81,32 +81,6 @@ resource "google_compute_region_network_endpoint_group" "api_neg" {
     service = google_cloud_run_v2_service.api.name
   }
 }
-# For now done manually, figure out how to attach this to the LB
-# resource "google_compute_url_map" "main" {
-#   name            = "url-map-main"
-#   default_service = google_compute_region_network_endpoint_group.web_neg.name
-
-#   host_rule {
-#     hosts        = ["web.fitnesstracker.alexlearningcloud.dev"]
-#     path_matcher = "web"
-#   }
-
-#   host_rule {
-#     hosts        = ["api.fitnesstracker.alexlearningcloud.dev"]
-#     path_matcher = "api"
-#   }
-
-#   path_matcher {
-#     name            = "web"
-#     default_service = google_compute_region_network_endpoint_group.web_neg.name
-#   }
-
-#   path_matcher {
-#     name            = "api"
-#     default_service = google_compute_region_network_endpoint_group.api_neg.name
-#   }
-# }
-
 
 # Deploy image to Cloud Run
 resource "google_cloud_run_v2_service" "web" {
@@ -202,28 +176,6 @@ resource "google_cloud_run_service_iam_policy" "api_noauth" {
 resource "google_service_account" "api" {
   account_id   = "cloud-run-service-account"
   display_name = "Service account for Cloud Run"
-}
-
-resource "google_secret_manager_secret_iam_member" "iam_secret_google_oauth_client_secret" {
-  secret_id = google_secret_manager_secret.secret_google_oauth_client_secret.id
-  role      = "roles/secretmanager.secretAccessor"
-  # Grant the new deployed service account access to this secret.
-  member     = "serviceAccount:${google_service_account.api.email}"
-  depends_on = [google_secret_manager_secret.secret_google_oauth_client_secret]
-}
-resource "google_secret_manager_secret_iam_member" "iam_secret_jwt_private_pem" {
-  secret_id = google_secret_manager_secret.secret_jwt_private_pem.id
-  role      = "roles/secretmanager.secretAccessor"
-  # Grant the new deployed service account access to this secret.
-  member     = "serviceAccount:${google_service_account.api.email}"
-  depends_on = [google_secret_manager_secret.secret_jwt_private_pem]
-}
-resource "google_secret_manager_secret_iam_member" "iam_secret_jwt_public_pem" {
-  secret_id = google_secret_manager_secret.secret_jwt_public_pem.id
-  role      = "roles/secretmanager.secretAccessor"
-  # Grant the new deployed service account access to this secret.
-  member     = "serviceAccount:${google_service_account.api.email}"
-  depends_on = [google_secret_manager_secret.secret_jwt_public_pem]
 }
 
 // -------- Env ---------

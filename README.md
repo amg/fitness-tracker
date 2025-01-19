@@ -62,9 +62,11 @@ Schedule builder:
 
 Main entry point `docker-compose.yaml`
 
-3 services:
+4 services:
  - api
     GO lang api service
+ - node-api
+    Typescript express based service (only local docker at this point)
  - frontend
     ReactJS website
  - postres DB
@@ -84,19 +86,19 @@ Script to log:<br/>
 
 ### Run on GCP<a name="run-gcp"></a>
 
-IMPORTANT: gcloud dosen't like images built on M1 so have to use `buildx bake` instead
+IMPORTANT: gcloud doesn't like images built on M1 so have to use `-p amd` 
 
 1. (if required)`gcloud auth configure-docker`
 2. Script to build and push to registry. See script for details:<br/>
 `./build.sh -a build -e staging -p amd -u true`
-3. `./deploy_main.sh -m apply` (yes before core, see below)
-4. (if required) `./deploy_core.sh -m apply`
+1. `./deploy_main.sh -m apply` (yes before core, see below)
+2. (if required) `./deploy_core.sh -m apply`
 
-Core sort of depends on Main because Terraform complains if services are not there before creating mapping.
-But for development mappings take time to re-provision certs (20min+) so we do not want to bring those down every time.
-Mappings will reconnect automagically once services are up.
+NOTE:
+1. DB takes 15+ min to create
+2. DNS records and loadbalancer certificate provisioning can take 24 hours
 
-Core also contains DB which also takes 15+ min to create.
+Becanse of that don't recreate those when actively devving.
 
 IMPORTANT: Extra steps to make this run.
 Since switching from experimental cloud run domain mapping to external Load Balancer few steps became manual:
