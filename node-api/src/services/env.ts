@@ -8,7 +8,7 @@ import { createPrivateKey, createPublicKey, KeyObject } from "crypto";
 /**
 * Use for non sensitive env variables
  */
-interface NonSecureEnv {
+export interface NonSecureEnv {
 	googleClientId: string
 	googleClientCallbackUrl: string
 	apiPort: string
@@ -20,7 +20,7 @@ interface NonSecureEnv {
 /**
 * Use for secure variables that should not be exposed in production
  */
-interface SecureEnv {
+export interface SecureEnv {
 	googleClientSecret: string
 	jwtKeyPrivate: KeyObject
 	jwtKeyPublic: KeyObject
@@ -29,7 +29,7 @@ interface SecureEnv {
 	postgresPassword: string
 }
 
-class Config {
+export class Config {
 	constructor(public env: NonSecureEnv, public secEnv: SecureEnv){}
 }
 
