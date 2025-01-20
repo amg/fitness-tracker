@@ -5,3 +5,4 @@
 *.bkp
 */node_modules/*
 */build/*
+*/coverage/*

@@ -1,6 +1,6 @@
 {
   /* Compile dirs */
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "__tests__/src/**/*.ts"],
   "exclude": ["node_modules"],
 
   "compilerOptions": {
@@ -12,6 +12,13 @@
     "module": "commonjs",                                /* Specify what module code is generated. */
     "rootDir": "src",                                    /* Specify the root folder within your source files. */
     "resolveJsonModule": true,                           /* Enable importing .json files. */
+
+    "paths": {
+      "@Tests/*": [ "./__tests__/*" ],
+      "@Controllers/*": [ "./src/controllers/*" ],
+      "@Services/*": [ "./src/services/*" ],
+    },
+  
     
     /* JavaScript Support */
     "allowJs": false,                                    /* Allow JavaScript files to be a part of your program. Use the 'checkJS' option to get errors from these files. */
