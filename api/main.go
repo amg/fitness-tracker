@@ -235,7 +235,7 @@ func googleAuthCodeHandler(responseWriter http.ResponseWriter, request *http.Req
 
 	// generating only jwt token for now. Using Google Id as subject in token
 	now := time.Now()
-	serverJWTToken, err := jwtWithCustomClaims(info.Id, now)
+	serverJWTToken, err := jwtWithCustomClaims(config, info.Id, now)
 	if err != nil {
 		log.Printf("main: JWT server token generated: %v\n", err)
 		http.Error(responseWriter, err.Error(), http.StatusInternalServerError)
@@ -324,7 +324,7 @@ func googleGetProfileInfo(googleTokens *oauth2.Token) (profileInfo *GoogleProfil
 
 // Create a token
 // Ref: https://github.com/golang-jwt/jwt/blob/main/example_test.go
-func jwtWithCustomClaims(customerId string, now time.Time) (string, error) {
+func jwtWithCustomClaims(config env.Config, customerId string, now time.Time) (string, error) {
 	cryptoKey := config.SecEnv.JwtKeyPrivate()
 
 	type MyCustomClaims struct {
