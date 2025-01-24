@@ -1,0 +1,17 @@
+{
+    "version": "2",
+    "sql": [
+      {
+        "engine": "postgresql",
+        "queries": ["user_info/user_info_query.sql", "auth/auth_query.sql"],
+        "schema": ["user_info/user_info_schema.sql", "auth/auth_schema.sql"],
+        "gen": {
+          "go": {
+            "package": "db",
+            "out": "generated",
+            "sql_package": "pgx/v5"
+          }
+        }
+      }
+    ]
+  }

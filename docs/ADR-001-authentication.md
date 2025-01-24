@@ -9,9 +9,22 @@ Accepted
 
 # Decision
 
-Web will get one off auth token from Google using the React Google lib.
-Web will pass one off token to the GoLang backend to request session/refresh tokens pair.
-Refresh token will be stored in the HTTP-only cookie while session token will be returned to the web client to persist in a session storage for easier access.
+Using Google for sign up and sign in:
+ - get initial info and email address to uniquely identify user
+ - sign in will also be matched by unique email and issues tokens
+
+2 tokens will be used: short lived JWT session token and long lived refresh token.
+JWT session token will encode userId to allow fast data lookup as long as token is valid.
+Refresh token will be used only to refresh session token.
+
+Both tokens will be sent to the client. Web will store them in secure http only cookie but with different paths.
+Session will be sent back with every authenticated data request but refresh token will only be sent to auth endpoint.
+
+The signup flow is: 
+ 1. web will get one off auth token from Google as part of oauth flow using the React Google lib
+ 2. web will pass one off token to the auth endpoint to request session/refresh tokens pair and create user account if required
+
+Additionally customer can have more than 1 active session. Each session will have unique pair of tokens and a repeatable fingerprint to identify the device.
 
 ::: mermaid
 sequenceDiagram
@@ -27,13 +40,13 @@ sequenceDiagram
     Backend->>+Google: auth token
     activate Google
     Google->>-Backend: session/refresh tokens
-    Backend->>-Web: session http-only cookie + user name
+    Backend->>-Web: session/refresh http-only cookies + user name
     activate Web
     Web->>Web: store user name in localstorage
     deactivate Web
 :::
 
-### Below is not implemented:
+### Refresh token:
 
 When session expires or not available, refresh request is made by Web to get the session/refresh token pair again.
 Refresh token in http-only cookie will be used to attempt a session refresh.
@@ -42,21 +55,23 @@ Refresh token in http-only cookie will be used to attempt a session refresh.
 sequenceDiagram
     participant Web
     participant Backend
-    participant Google
 
-    Web->>Web: check session store
-    Note over Web: no access token
-    Web->>Backend: request tokens
-    Backend->>Backend: is refresh token in a cookie
+    Web->>Web: check session store for a record
+    Note over Web: no record, probably no session. See flow above
+    Note over Web: have record, try getting data
+    Web->>Backend: get some data
+    Backend->>Web: 401 session expired
+    Web->>Backend: trying to get new token (refresh_token cookie)
+    Backend->>Backend: checking refresh token in db
+    Note over Backend: got no refresh token, sign out
+    Backend->>Web: 403 sign-out
     Note over Backend: got refresh token
-    Backend->>Google: get new pair of tokens
-    Google->>Google: validate refresh token
-    Note over Google: if valid
-    Google->>Backend: fresh session/refresh tokens
-    Backend->>Web: refresh http-only cookie + session token
-    Note over Google: if not valid
-    Google->>Backend: not authorized
-    Backend->>Web: logged out
+    Backend->>Backend: issue new tokens
+    Backend->>Web: session and refresh tokens in secure http-only cookie
+    Web->>Backend: get some data
+    Backend->>Backend: is session token valid?
+    Note over Backend: valid
+    Backend->>Web: data
 :::
 
 
