@@ -1,26 +1,24 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
+	"fitness-tracker/controllers"
 	"fitness-tracker/db"
 	"fitness-tracker/env"
+	repository "fitness-tracker/repository"
+	"fitness-tracker/utils"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"time"
-
-	"github.com/golang-jwt/jwt/v5"
-
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
 )
 
-const HEADER_JWT = "jwt_token"
-const JWT_EXPIRATION_TIME = 30 * time.Minute
-
+// parsed config from ENV variables and secret storage
 var config env.Config
+
+// connected DB to be used across handlers
+var database *db.DB
 
 func main() {
 	defer func() {
@@ -30,15 +28,32 @@ func main() {
 	}()
 	config = env.LoadEnvVariables()
 	log.Printf("main: starting backend on the port: %v", config.Env.ApiPort())
+
+	// initialise db connection to use across the handlers
+	db, err := db.InitDB(config)
+	if err != nil {
+		log.Panicf("main: connection to db failed: %v\n", err)
+	}
+	database = db
+
+	defer func() {
+		log.Println("main: pool closed")
+		database.Pool.Close()
+	}()
+
 	// starting the server that will listen forever on the port
 	http.HandleFunc("/", rootHandler)
-	http.HandleFunc("/api/auth/google", corsHandler(googleAuthCodeHandler))
-	http.HandleFunc("/authenticated", corsHandler(authenticatedCallHandler))
-	http.HandleFunc("/logout", corsHandler(logoutCallHandler))
 
-	// temp methods
-	http.HandleFunc("/testdb", corsHandler(dbTestHandler))
-	http.HandleFunc("/seeddb", corsHandler(dbSeedHandler))
+	// google auth
+	http.HandleFunc("/auth/google", corsHandler(googleAuthCodeHandler))
+
+	// session managment
+	http.HandleFunc("/auth/refresh", corsHandler(authRefreshCallHandler))
+	http.HandleFunc("/auth/profile", corsHandler(authGetProfileCodeHandler))
+	http.HandleFunc("/auth/logout", corsHandler(authLogoutCallHandler))
+
+	// data handlers
+	http.HandleFunc("/authenticated", corsHandler(authenticatedCallHandler))
 
 	log.Fatal(http.ListenAndServe(":"+config.Env.ApiPort(), nil))
 }
@@ -68,6 +83,7 @@ func rootHandler(responseWriter http.ResponseWriter, request *http.Request) {
 		responseWriter.Write([]byte(fmt.Sprintf("URL(%v) is not supported\n", request.URL.Path)))
 	} else {
 		responseWriter.Write([]byte(fmt.Sprintln("Root endpoint for the backend")))
+		responseWriter.Write([]byte(fmt.Sprintln("User Agent: %v", utils.FingerprintRequest(request))))
 		responseWriter.Write([]byte(`(debug)Available endpoints:
             \t/api/auth/google
         `))
@@ -76,25 +92,28 @@ func rootHandler(responseWriter http.ResponseWriter, request *http.Request) {
 }
 
 func authenticatedCallHandler(responseWriter http.ResponseWriter, request *http.Request) {
-	err := validateToken(responseWriter, request)
+	userId, err := utils.ValidateSession(config, responseWriter, request)
 	if err != nil {
 		http.Error(responseWriter, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
-	a, _ := json.Marshal(map[string]int{"foo": 1, "bar": 2, "baz": 3})
+	a, _ := json.Marshal(map[string]any{"userId": userId.String()})
 	responseWriter.Write(a)
 }
 
-func logoutCallHandler(responseWriter http.ResponseWriter, request *http.Request) {
-	err := validateToken(responseWriter, request)
+func authLogoutCallHandler(responseWriter http.ResponseWriter, request *http.Request) {
+	userId, err := utils.ValidateSession(config, responseWriter, request)
 	if err != nil {
 		http.Error(responseWriter, err.Error(), http.StatusUnauthorized)
 		return
 	}
-
+	// TODO clear refresh token from db
+	authRepo := repository.AuthRepo{DB: database}
+	authRepo.DeleteRefreshTokenByUserId(*userId, utils.FingerprintRequest(request))
+	// reset cookies
 	http.SetCookie(responseWriter, &http.Cookie{
-		Name:     HEADER_JWT,
+		Name:     utils.KEY_SESSION_TOKEN,
 		Value:    "",
 		Domain:   config.Env.WebDomain(),
 		Path:     "/",
@@ -102,99 +121,17 @@ func logoutCallHandler(responseWriter http.ResponseWriter, request *http.Request
 		HttpOnly: true,
 		Secure:   false, //NOTE: for testing purposes only
 	})
+	http.SetCookie(responseWriter, &http.Cookie{
+		Name:     utils.KEY_REFRESH_TOKEN,
+		Value:    "",
+		Domain:   config.Env.WebDomain(),
+		Path:     "/auth/refresh",
+		Expires:  time.Unix(0, 0),
+		HttpOnly: true,
+		Secure:   false, //NOTE: for testing purposes only
+	})
 	a, _ := json.Marshal(map[string]bool{"logged out": true})
 	responseWriter.Write(a)
-}
-
-func dbTestHandler(responseWriter http.ResponseWriter, request *http.Request) {
-	dbConnection, err := db.InitConnection(config)
-	if err != nil {
-		log.Printf("main: connection to db failed: %v\n", err)
-		http.Error(responseWriter, err.Error(), http.StatusInternalServerError)
-	}
-	defer func() {
-		dbConnection.DB.Close()
-	}()
-
-	repo := db.AuthRepo{Connection: dbConnection}
-
-	data, err := repo.GetSomeRandomData()
-	if err != nil {
-		log.Printf("main: failed to get data: %v\n", err)
-		http.Error(responseWriter, err.Error(), http.StatusInternalServerError)
-	}
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		log.Printf("main: failed to marshal data: %v\n", err)
-		http.Error(responseWriter, err.Error(), http.StatusInternalServerError)
-	}
-	responseWriter.Write(jsonData)
-
-}
-func dbSeedHandler(responseWriter http.ResponseWriter, request *http.Request) {
-	dbConnection, err := db.InitConnection(config)
-	if err != nil {
-		log.Printf("main: connection to db failed: %v\n", err)
-		http.Error(responseWriter, err.Error(), http.StatusInternalServerError)
-	}
-	defer func() {
-		dbConnection.DB.Close()
-	}()
-
-	repo := db.AuthRepo{Connection: dbConnection}
-
-	err = repo.Seed()
-	if err != nil {
-		log.Printf("main: failed to get data: %v\n", err)
-		http.Error(responseWriter, err.Error(), http.StatusInternalServerError)
-	}
-}
-
-/**
-* Validates token consistently. Call in all authenticated calls.
- */
-func validateToken(responseWriter http.ResponseWriter, request *http.Request) error {
-	jwtCookie, err := request.Cookie(HEADER_JWT)
-	if err != nil {
-		log.Printf("main: token is missing: %v\n", err)
-		http.Error(responseWriter, err.Error(), http.StatusUnauthorized)
-		return err
-	}
-
-	cryptoPublicKey := config.SecEnv.JwtKeyPublic()
-
-	parsed, err := jwt.Parse(jwtCookie.Value, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-
-		return cryptoPublicKey, nil
-	})
-
-	if !parsed.Valid {
-		log.Printf("main: token verification failed: %v\n", err)
-		http.Error(responseWriter, err.Error(), http.StatusUnauthorized)
-		return err
-	}
-	// why do this not work while Parse above does?
-	// err = jwt.SigningMethodRS256.Verify(strings.Join(parts[0:2], "."), ([]byte)(parts[2]), cryptoPublicKey)
-	// if err != nil {
-	// 	log.Printf("Token verification failed: %v\n", err)
-	// 	http.Error(responseWriter, err.Error(), http.StatusUnauthorized)
-	// 	return
-	// }
-
-	return nil
-}
-
-// Google one-off auth token provided to the server to exchange for the googleTokens pair
-type GoogleAuthCodeInput struct {
-	Code string `json:"code"`
-}
-
-// Return session token in a payload
-type SessionTokenOutput struct {
-	Token string `json:"token"`
 }
 
 func googleAuthCodeHandler(responseWriter http.ResponseWriter, request *http.Request) {
@@ -207,7 +144,7 @@ func googleAuthCodeHandler(responseWriter http.ResponseWriter, request *http.Req
 		return
 	}
 
-	var authCode GoogleAuthCodeInput
+	var authCode controllers.GoogleAuthCodeInput
 	err = json.Unmarshal(body, &authCode)
 	if err != nil {
 		log.Printf("main: decoding authCode failed: %v; body: %v\n", err, body)
@@ -215,142 +152,85 @@ func googleAuthCodeHandler(responseWriter http.ResponseWriter, request *http.Req
 		return
 	}
 
-	// got authcode for Google, request tokens and store them in db
-	googleTokens, err := googleOneOffTokenExchange(authCode)
+	profile, err := controllers.AuthenticateWithGoogle(config, authCode)
 	if err != nil {
-		log.Printf("main: google token exchange for session failed: %v\n", err)
+		log.Printf("main: Google auth failed: %v", err)
 		http.Error(responseWriter, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// generate user in db and add Gtokens
-	info, err := googleGetProfileInfo(googleTokens)
+	// create or merge customer
+	authRepo := repository.AuthRepo{DB: database}
+	customerRecord, err := authRepo.CreateOrMergeCustomer(profile.Email, profile.GivenName, profile.FamilyName, profile.Picture)
 	if err != nil {
-		log.Printf("main: google profile read failed: %v\n", err)
+		log.Printf("main: creating/finding customer failed: %v", err)
 		http.Error(responseWriter, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.Printf("main: customer's info: %v\n", *info)
-	//TODO: add info to DB along with refresh token
 
-	// generating only jwt token for now. Using Google Id as subject in token
-	now := time.Now()
-	serverJWTToken, err := jwtWithCustomClaims(config, info.Id, now)
+	// issue tokens
+	session, refresh, err := utils.GenerateTokens(config, customerRecord.ID.String())
 	if err != nil {
-		log.Printf("main: JWT server token generated: %v\n", err)
+		log.Printf("main: failed to generate tokens: %v", err)
 		http.Error(responseWriter, err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	// and store refresh in db
+	_, err = authRepo.UpsertRefreshToken(customerRecord.ID, utils.FingerprintRequest(request), refresh)
+	if err != nil {
+		log.Printf("main: failed to generate refresh token: %v", err)
+		// do not quit at this point as customer can still use this session
 	}
 
 	// set http-only jwk token cookie
-	http.SetCookie(responseWriter, &http.Cookie{
-		Name:     HEADER_JWT,
-		Value:    serverJWTToken,
-		Domain:   config.Env.WebDomain(),
-		Path:     "/",
-		Expires:  now.Add(JWT_EXPIRATION_TIME),
-		HttpOnly: true,
-		Secure:   false, //NOTE: for testing purposes only
-	})
-	profile, err := json.Marshal(info)
+	utils.SetTokenCookies(config, session, refresh, responseWriter, request)
+
+	customerJson, err := json.Marshal(customerRecord)
 	if err != nil {
-		log.Printf("main: failed to marshal profile: %v\n", err)
+		log.Printf("main: failed to marshal customer: %v\n", err)
 		http.Error(responseWriter, err.Error(), http.StatusInternalServerError)
 	}
-	responseWriter.Write(profile)
+	responseWriter.Write(customerJson)
 }
 
-// func userInfoHandler(responseWriter http.ResponseWriter, request *http.Request) {
-// 	// err := verifyrequest.Header("X-Auth-Token")
-// 	// request.Cookie("gtoken")
-// }
-
-/**
-* Handle one-off token exchange for session/refresh pair
- */
-func googleOneOffTokenExchange(authCode GoogleAuthCodeInput) (token *oauth2.Token, err error) {
-	var googleOauthConfig = &oauth2.Config{
-		// port is of the ReactJS app
-		RedirectURL:  config.Env.GoogleClientCallbackUrl(),
-		ClientID:     config.Env.GoogleClientId(),
-		ClientSecret: config.SecEnv.GoogleClientSecret(),
-		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email"},
-		Endpoint:     google.Endpoint,
-	}
-
-	// Use code to get googleTokens and get user info from Google.
-	googleTokens, err := googleOauthConfig.Exchange(context.Background(), authCode.Code)
+func authGetProfileCodeHandler(responseWriter http.ResponseWriter, request *http.Request) {
+	userId, err := utils.ValidateSession(config, responseWriter, request)
 	if err != nil {
-		log.Printf("main: exchange of authcode (%v) failed: %v\n", authCode.Code, err)
-		return nil, err
+		http.Error(responseWriter, err.Error(), http.StatusUnauthorized)
+		return
 	}
 
-	return googleTokens, nil
+	authRepo := repository.AuthRepo{DB: database}
+	customerRecord, err := authRepo.GetCustomerInfo(*userId)
+	if err != nil {
+		log.Printf("main: failed to find customer: %v\n", err)
+		http.Error(responseWriter, err.Error(), http.StatusForbidden)
+	}
+
+	customerJson, err := json.Marshal(customerRecord)
+	if err != nil {
+		log.Printf("main: failed to marshal customer: %v\n", err)
+		http.Error(responseWriter, err.Error(), http.StatusInternalServerError)
+	}
+	responseWriter.Write(customerJson)
 }
 
-type GoogleProfileInfo struct {
-	Id            string `json:"id"`
-	Email         string `json:"email"`
-	VerifiedEmail bool   `json:"verified_email"`
-	Name          string `json:"name"`
-	GivenName     string `json:"given_name"`
-	FamilyName    string `json:"family_name"`
-	Picture       string `json:"picture"`
-}
-
-const oauthGoogleUrlAPI = "https://www.googleapis.com/oauth2/v2/userinfo?access_token="
-
-func googleGetProfileInfo(googleTokens *oauth2.Token) (profileInfo *GoogleProfileInfo, err error) {
-	response, err := http.Get(oauthGoogleUrlAPI + googleTokens.AccessToken)
+func authRefreshCallHandler(responseWriter http.ResponseWriter, request *http.Request) {
+	_, refreshToken, err := utils.ValidateRefreshToken(config, responseWriter, request)
 	if err != nil {
-		log.Println("main: getting profile data failed")
-		return nil, err
+		log.Printf("main: invalid token: %v", err)
+		http.Error(responseWriter, err.Error(), http.StatusForbidden)
+		return
 	}
-	defer response.Body.Close()
-	contents, err := io.ReadAll(response.Body)
+
+	authRepo := repository.AuthRepo{DB: database}
+	session, refresh, err := controllers.ReIssueTokens(config, &authRepo, refreshToken)
 	if err != nil {
-		log.Println("main: reading profile data failed")
-		return nil, err
+		log.Printf("main: failed to find refresh token: %v\n", err)
+		http.Error(responseWriter, err.Error(), http.StatusForbidden)
+		return
 	}
-
-	var googleProfileInfo GoogleProfileInfo
-	err = json.Unmarshal(contents, &googleProfileInfo)
-	if err != nil {
-		log.Println("main: reading profile data failed")
-		return nil, err
-	}
-	return &googleProfileInfo, err
-}
-
-// Create a token
-// Ref: https://github.com/golang-jwt/jwt/blob/main/example_test.go
-func jwtWithCustomClaims(config env.Config, customerId string, now time.Time) (string, error) {
-	cryptoKey := config.SecEnv.JwtKeyPrivate()
-
-	type MyCustomClaims struct {
-		Foo string `json:"foo"`
-		jwt.RegisteredClaims
-	}
-
-	// Create claims with multiple fields populated
-	claims := MyCustomClaims{
-		"bar",
-		jwt.RegisteredClaims{
-			// A usual scenario is to set the expiration time relative to the current time
-			// For now it's 1 minute for testing purposes
-			ExpiresAt: jwt.NewNumericDate(now.Add(JWT_EXPIRATION_TIME)),
-			IssuedAt:  jwt.NewNumericDate(now),
-			NotBefore: jwt.NewNumericDate(now),
-			Issuer:    "FitnessTracker",
-			Subject:   customerId,
-			Audience:  []string{"FitnessTrackerAPI"},
-		},
-	}
-
-	token := jwt.NewWithClaims(
-		jwt.SigningMethodRS256,
-		claims,
-	)
-
-	return token.SignedString(cryptoKey)
+	// set http-only jwk token cookie
+	utils.SetTokenCookies(config, session, refresh, responseWriter, request)
 }

@@ -16,7 +16,7 @@ function HomePage() {
     }, [authContext.state])
 
     const authenticatedCall = () => {
-        fetch(apiBaseUrl + '/authenticated', {
+        fetch(apiBaseUrl + '/auth/profile', {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -32,7 +32,7 @@ function HomePage() {
                 return response.json();
             })
             .then(data => {
-                setData(JSON.stringify(data));
+                setData(data);
             })
             .catch(error => {
                 setData(`message: ${error.message}`);
@@ -47,7 +47,7 @@ function HomePage() {
                 <br />
                 <br />
                 {data ? (
-                    <div> {JSON.stringify(data)} </div>
+                    <pre>{JSON.stringify(data, null, 2)}</pre>
                 ) : (
                     <div>No data</div>
                 )

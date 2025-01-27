@@ -1,6 +1,6 @@
 {
   /* Compile dirs */
-  "include": ["src/**/*.ts", "__tests__/src/**/*.ts"],
+  "include": ["src/**/*.ts"],
   "exclude": ["node_modules"],
 
   "compilerOptions": {

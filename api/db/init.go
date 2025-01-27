@@ -1,20 +1,22 @@
 package db
 
 import (
-	"database/sql"
+	"context"
+	gendb "fitness-tracker/db/generated"
 	"fitness-tracker/env"
 	"fmt"
 
-	_ "github.com/lib/pq"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type Connection struct {
-	DB *sql.DB
+type DB struct {
+	Queries *gendb.Queries
+	Pool    *pgxpool.Pool
 }
 
-// InitConnection initializes a Unix socket connection pool for
+// InitDB initializes a Unix socket connection pool for
 // a Cloud SQL instance of MySQL.
-func InitConnection(config env.Config) (*Connection, error) {
+func InitDB(config env.Config) (*DB, error) {
 	var (
 		dbUser         = config.SecEnv.PostgresUser()
 		dbPwd          = config.SecEnv.PostgresPassword()
@@ -39,15 +41,11 @@ func InitConnection(config env.Config) (*Connection, error) {
 		panic("db: unsupported env")
 	}
 
-	// dbPool is the pool of database connections.
-	dbPool, err := sql.Open("postgres", connString)
+	cx := context.Background()
+	pool, err := pgxpool.New(cx, connString)
 	if err != nil {
-		return nil, fmt.Errorf("db.open: %w; version 2", err)
+		return nil, fmt.Errorf("db.open: %w;", err)
 	}
 
-	if err := dbPool.Ping(); err != nil {
-		return nil, fmt.Errorf("db.ping: %w; version 2", err)
-	}
-
-	return &Connection{DB: dbPool}, nil
+	return &DB{Queries: gendb.New(pool), Pool: pool}, nil
 }

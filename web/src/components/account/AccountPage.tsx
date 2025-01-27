@@ -15,7 +15,7 @@ function AuthComponent() {
             // Send the authorization code to the backend server
 
             // TODO: update this to allow easier customisation
-            fetch(apiBaseUrl + '/api/auth/google', {
+            fetch(apiBaseUrl + '/auth/google', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -26,7 +26,7 @@ function AuthComponent() {
             })
                 .then(response => response.json())
                 .then(data => {
-                    authContext.setAuthState(AuthState.newState(data.name, data.picture))
+                    authContext.setAuthState(AuthState.newState(`${data.firstName} ${data.lastName}`, data.pictureUrl))
                 })
                 .catch(error => {
                     console.error('Error:', error);
@@ -41,7 +41,7 @@ function AuthComponent() {
 
     // log out function to log the user out of google and set the profile array to null
     const logOut = () => {
-        fetch(apiBaseUrl + '/logout', {
+        fetch(apiBaseUrl + '/auth/logout', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

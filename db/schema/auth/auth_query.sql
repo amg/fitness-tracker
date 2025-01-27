@@ -18,3 +18,7 @@ RETURNING *;
 -- name: DeleteRefreshToken :exec
 DELETE FROM refresh_token
 WHERE id = $1;
+
+-- name: DeleteRefreshTokenByUserAndFingerprint :exec
+DELETE FROM refresh_token
+WHERE user_id = $1 AND fingerprint = $2;
