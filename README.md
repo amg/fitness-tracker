@@ -5,7 +5,6 @@
 - [Building](#building)
   - [Run on docker](#run-on-docker)
   - [Run on GCP](#run-on-gcp)
-- [Other useful links](#other-useful-links)
 
 ## Context
 
@@ -109,46 +108,3 @@ Edit classic application load balancer -> Host and path rules (path /*, host [ap
 
 
 Inspect manifest: `docker manifest inspect gcr.io/learning-gcloud-444623/web:latest`
-
-## Other useful links<a name="links"></a>
-
-ReactJS
-
-https://react.dev/learn/state-as-a-snapshot
-
-OAuth
-
-https://auth0.com/blog/critical-vulnerabilities-in-json-web-token-libraries/
-
-OAuth Go lang
-
-https://github.com/golang-jwt/jwt?tab=readme-ov-file
-
-
-Load balancer the hard way
-
-https://cloud.google.com/blog/topics/developers-practitioners/serverless-load-balancing-terraform-hard-way
-
-Region picker
-
-https://googlecloudplatform.github.io/region-picker/
-https://cloud.google.com/dns/docs/zones
-
-Testing DNS propagation
-
-https://www.whatsmydns.net/#NS
-
-Debugging GOlang with docker container
-
-https://blog.jetbrains.com/go/2020/05/06/debugging-a-go-application-inside-a-docker-container/
-
-Adding PostgreSQL
-
-https://blog.logrocket.com/building-simple-app-go-postgresql/
-
-Useful on security
-
-https://stackoverflow.com/questions/41939884/server-side-google-sign-in-way-to-encrypt-decrypt-data-with-google-managed-secr
-
-
-https://cloud.google.com/docs/security/key-management-deep-dive
