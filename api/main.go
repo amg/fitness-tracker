@@ -83,7 +83,7 @@ func rootHandler(responseWriter http.ResponseWriter, request *http.Request) {
 		responseWriter.Write([]byte(fmt.Sprintf("URL(%v) is not supported\n", request.URL.Path)))
 	} else {
 		responseWriter.Write([]byte(fmt.Sprintln("Root endpoint for the backend")))
-		responseWriter.Write([]byte(fmt.Sprintln("User Agent: %v", utils.FingerprintRequest(request))))
+		responseWriter.Write([]byte(fmt.Sprintf("User Agent: %v", utils.FingerprintRequest(request))))
 		responseWriter.Write([]byte(`(debug)Available endpoints:
             \t/api/auth/google
         `))
