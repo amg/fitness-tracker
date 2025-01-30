@@ -1,60 +1,74 @@
 - [Context](#context)
-- [Requirements](#requirements)
+- [Pillars](#pillars)
+  - [Simplicity](#simplicity)
+  - [Reliability](#reliability)
+- [Rough MVP](#rough-mvp)
 - [Technology](#technology)
-  - [High level view:](#high-level-view)
+  - [High level view](#high-level-view)
 - [Building](#building)
   - [Run on docker](#run-on-docker)
   - [Run on GCP](#run-on-gcp)
 
 ## Context
 
-This project is meant as a playground for learning Full-Stack development but it is my hope that it will continue to evolve into something useful one day.
+Do you love exercises? Do you record what you did and when? Does it look like a bunch of lines on the paper note book and you wish you could somehow summarise all the amazing effort you have put in? Or have you used an app just to realise that exercise you are doing doesn't match the standard set or that its input is hundred clicks away?
 
-It is dockerized and ready for deployment in GCP.
-See docker-compose.yml and /deploy Terraform files.
+Meet Fitness tracker, a Fullstack distributed application that aims to eliminate the friction of recording and reviewing your exercises!
+It’s being built using a number of languages and technologies: Go, Typescript, HCL Terraform and Docker. 
+This project is about learning about backend development in a real-world setting.
 
-Terraform has currently some sections commented out to speed up iteration but for initial run, they are required.
 
-## Requirements<a name="reqs"></a>
+## Pillars<a name="reqs"></a>
+
+1. simplicity
+2. reliability
+
+### Simplicity
+
+Doing exercises is hard enough, no more traversing multiple screens trying to record what you have achieved...
+
+Once you have created a simple account recording is as simple as:
+1. open the website (you will have shortcut on your mobile most likely!)
+2. today is preselected, you see the list of generic exercises or your custom ones
+3. you select one, you specify number of sets and reps for each and you hit done!
+
+### Reliability
+
+Data is safely stored in the cloud. Any device, any time, same simple experience.
+
+## Rough MVP
 
 Customer authentication:
-  - (must) signup with google
-  - (must) login with google
-  - (must) get profile
-  - (nice) update nickname
+  - (must) signup/login with google
+  - (must) account info
 
 Exercises input:
-  - (must) create
-      - (must) name
-      - (must) simple description
-      - (must) image
-      - (nice) video
-  - (must) delete
-  - (nice) edit
-  - (nice) end to end encryption using google account
-  - (nice) exercises edit
+  - create/edit
+    - (must) name, description
+    - (must) visual steps
+    - (nice-to-have) video
+  - delete
+    - (must) archive, existing recordings are safe
 
-Schedule builder:
-  - (must) create new daily schedule
+Schedule/Reminders:
+  - (must) create
       ie. every x days, can be every second day for example
-  - (must) set reps and sets goal (3 sets 10 reps each)
-  - (must) finish schedule/end it/archive so it's remembered
+  - (must) delete
   - (nice) timed schedule
       ie. start, end on the date
-  - (nice) notifications for a workout
-  - (nice) add to google calendar (web)
-
+  - (nice) notifications
 
 ## Technology<a name="technology"></a>
 
-1. React JS for FE (frontend)
-2. Go lang for BE (backend)
-3. Google Cloud (infrastructure)
-4. Docker
+1. React JS (frontend)
+2. GO lang for auth (backend)
+3. NodeJS for data (backend)
+4. Terraform Google Cloud (infrastructure)
+5. Docker containers
 
 <br />
 
-### High level view:
+### High level view
 ![High level view](./docs/high-level-arch.png)
 
 ## Building<a name="building"></a>
@@ -63,11 +77,11 @@ Main entry point `docker-compose.yaml`
 
 4 services:
  - api
-    GO lang api service
+    GO lang auth api service
  - node-api
-    Typescript express based service (only local docker at this point)
+    Typescript node express
  - frontend
-    ReactJS website
+    ReactJS single page app
  - postres DB
 
 `.secrets` folder is required to specify multiple variables used by the stack but not committed to the source code. Can copy starting point from `secrets-example` and fill in the blanks.
@@ -97,7 +111,7 @@ NOTE:
 1. DB takes 15+ min to create
 2. DNS records and loadbalancer certificate provisioning can take 24 hours
 
-Becanse of that don't recreate those when actively devving.
+Because of that don't recreate those when actively devving.
 
 IMPORTANT: Extra steps to make this run.
 Since switching from experimental cloud run domain mapping to external Load Balancer few steps became manual:
@@ -105,6 +119,3 @@ Since switching from experimental cloud run domain mapping to external Load Bala
 2. Load balancer mapping is not specified in Terraform, edit load balancer and add routes manually 
 Edit classic application load balancer -> Host and path rules (path /*, host [api/web].domain.you.own.com)
 3. Wait for a while, check certificate provisioning process, will be a link in Frontend of LB (up to 24 hours)
-
-
-Inspect manifest: `docker manifest inspect gcr.io/learning-gcloud-444623/web:latest`
