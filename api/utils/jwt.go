@@ -16,16 +16,12 @@ func JwtWithCustomClaims(config env.Config, customerId string, now time.Time, ex
 	cryptoKey := config.SecEnv.JwtKeyPrivate()
 
 	type MyCustomClaims struct {
-		Foo string `json:"foo"`
 		jwt.RegisteredClaims
 	}
 
 	// Create claims with multiple fields populated
 	claims := MyCustomClaims{
-		"bar",
 		jwt.RegisteredClaims{
-			// A usual scenario is to set the expiration time relative to the current time
-			// For now it's 1 minute for testing purposes
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
 			IssuedAt:  jwt.NewNumericDate(now),
 			NotBefore: jwt.NewNumericDate(now),
