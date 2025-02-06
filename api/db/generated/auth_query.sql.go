@@ -9,47 +9,55 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createRefreshToken = `-- name: CreateRefreshToken :one
-INSERT INTO refresh_token (
-  id, user_id, fingerprint
+INSERT INTO refresh_token_jti (
+  id, user_id, fingerprint, expires_at
 ) VALUES (
-  $1, $2, $3
+  $1, $2, $3, $4
 )
-RETURNING id, user_id, fingerprint, created_at
+RETURNING id, user_id, fingerprint, expires_at, created_at
 `
 
 type CreateRefreshTokenParams struct {
-	ID          string
+	ID          uuid.UUID
 	UserID      uuid.UUID
 	Fingerprint string
+	ExpiresAt   pgtype.Timestamp
 }
 
-func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (RefreshToken, error) {
-	row := q.db.QueryRow(ctx, createRefreshToken, arg.ID, arg.UserID, arg.Fingerprint)
-	var i RefreshToken
+func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (RefreshTokenJti, error) {
+	row := q.db.QueryRow(ctx, createRefreshToken,
+		arg.ID,
+		arg.UserID,
+		arg.Fingerprint,
+		arg.ExpiresAt,
+	)
+	var i RefreshTokenJti
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.Fingerprint,
+		&i.ExpiresAt,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const deleteRefreshToken = `-- name: DeleteRefreshToken :exec
-DELETE FROM refresh_token
+DELETE FROM refresh_token_jti
 WHERE id = $1
 `
 
-func (q *Queries) DeleteRefreshToken(ctx context.Context, id string) error {
+func (q *Queries) DeleteRefreshToken(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, deleteRefreshToken, id)
 	return err
 }
 
 const deleteRefreshTokenByUserAndFingerprint = `-- name: DeleteRefreshTokenByUserAndFingerprint :exec
-DELETE FROM refresh_token
+DELETE FROM refresh_token_jti
 WHERE user_id = $1 AND fingerprint = $2
 `
 
@@ -64,41 +72,43 @@ func (q *Queries) DeleteRefreshTokenByUserAndFingerprint(ctx context.Context, ar
 }
 
 const getRefreshToken = `-- name: GetRefreshToken :one
-SELECT id, user_id, fingerprint, created_at FROM refresh_token
+SELECT id, user_id, fingerprint, expires_at, created_at FROM refresh_token_jti
 WHERE id = $1 LIMIT 1
 `
 
-func (q *Queries) GetRefreshToken(ctx context.Context, id string) (RefreshToken, error) {
+func (q *Queries) GetRefreshToken(ctx context.Context, id uuid.UUID) (RefreshTokenJti, error) {
 	row := q.db.QueryRow(ctx, getRefreshToken, id)
-	var i RefreshToken
+	var i RefreshTokenJti
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.Fingerprint,
+		&i.ExpiresAt,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const listRefreshToken = `-- name: ListRefreshToken :many
-SELECT id, user_id, fingerprint, created_at FROM refresh_token
+SELECT id, user_id, fingerprint, expires_at, created_at FROM refresh_token_jti
 WHERE user_id = $1
 ORDER BY id
 `
 
-func (q *Queries) ListRefreshToken(ctx context.Context, userID uuid.UUID) ([]RefreshToken, error) {
+func (q *Queries) ListRefreshToken(ctx context.Context, userID uuid.UUID) ([]RefreshTokenJti, error) {
 	rows, err := q.db.Query(ctx, listRefreshToken, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []RefreshToken
+	var items []RefreshTokenJti
 	for rows.Next() {
-		var i RefreshToken
+		var i RefreshTokenJti
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,
 			&i.Fingerprint,
+			&i.ExpiresAt,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err

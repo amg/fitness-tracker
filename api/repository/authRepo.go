@@ -2,12 +2,14 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"fitness-tracker/db"
 	gendb "fitness-tracker/db/generated"
 	"fitness-tracker/models"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	_ "github.com/lib/pq"
 )
 
@@ -61,16 +63,23 @@ func (authRepo *AuthRepo) CreateOrMergeCustomer(email string, firstName string, 
 	}, nil
 }
 
-func (authRepo *AuthRepo) UpsertRefreshToken(userId uuid.UUID, fingerprint string, refreshToken string) (token string, err error) {
+func (authRepo *AuthRepo) UpsertRefreshToken(userId uuid.UUID, fingerprint string, refreshToken uuid.UUID, expiresAt time.Time) (tokenJti *models.RefreshToken, err error) {
 	updatedToken, err := authRepo.DB.Queries.CreateRefreshToken(context.Background(), gendb.CreateRefreshTokenParams{
 		ID:          refreshToken,
 		UserID:      userId,
 		Fingerprint: fingerprint,
+		ExpiresAt:   pgtype.Timestamp{Time: expiresAt, Valid: true},
 	})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return updatedToken.ID, nil
+	return &models.RefreshToken{
+		ID:          updatedToken.ID,
+		UserID:      updatedToken.UserID,
+		Fingerprint: updatedToken.Fingerprint,
+		CreatedAt:   updatedToken.CreatedAt.Time,
+		ExpiresAt:   updatedToken.ExpiresAt.Time,
+	}, nil
 }
 
 func (authRepo *AuthRepo) DeleteRefreshTokenByUserId(userId uuid.UUID, fingerprint string) error {
@@ -96,7 +105,7 @@ func (authRepo *AuthRepo) GetCustomerInfo(userId uuid.UUID) (userInfo *models.Us
 	}, nil
 }
 
-func (authRepo *AuthRepo) GetRefreshToken(currentToken string) (refreshToken *models.RefreshToken, err error) {
+func (authRepo *AuthRepo) GetRefreshToken(currentToken uuid.UUID) (refreshToken *models.RefreshToken, err error) {
 	ctx := context.Background()
 	foundToken, err := authRepo.DB.Queries.GetRefreshToken(ctx, currentToken)
 	if err != nil {
@@ -110,7 +119,7 @@ func (authRepo *AuthRepo) GetRefreshToken(currentToken string) (refreshToken *mo
 	}, nil
 }
 
-func (authRepo *AuthRepo) DeleteRefreshToken(refreshToken string) error {
+func (authRepo *AuthRepo) DeleteRefreshToken(refreshToken uuid.UUID) error {
 	ctx := context.Background()
 	return authRepo.DB.Queries.DeleteRefreshToken(ctx, refreshToken)
 }

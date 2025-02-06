@@ -7,8 +7,9 @@ import (
 )
 
 type RefreshToken struct {
-	ID          string    `json:"id"`
+	ID          uuid.UUID `json:"id"`
 	UserID      uuid.UUID `json:"userId"`
 	Fingerprint string    `json:"fingerprint"`
 	CreatedAt   time.Time `json:"createdAt"`
+	ExpiresAt   time.Time `json:"expiresAt"`
 }

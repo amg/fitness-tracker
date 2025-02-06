@@ -11,7 +11,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"time"
 )
 
 // parsed config from ENV variables and secret storage
@@ -92,7 +91,7 @@ func rootHandler(responseWriter http.ResponseWriter, request *http.Request) {
 }
 
 func authenticatedCallHandler(responseWriter http.ResponseWriter, request *http.Request) {
-	userId, err := utils.ValidateSession(config, responseWriter, request)
+	userId, err := utils.ValidateSession(config, request)
 	if err != nil {
 		http.Error(responseWriter, err.Error(), http.StatusUnauthorized)
 		return
@@ -103,33 +102,18 @@ func authenticatedCallHandler(responseWriter http.ResponseWriter, request *http.
 }
 
 func authLogoutCallHandler(responseWriter http.ResponseWriter, request *http.Request) {
-	userId, err := utils.ValidateSession(config, responseWriter, request)
+	userId, err := utils.ValidateSession(config, request)
 	if err != nil {
 		http.Error(responseWriter, err.Error(), http.StatusUnauthorized)
 		return
 	}
-	// TODO clear refresh token from db
+
 	authRepo := repository.AuthRepo{DB: database}
+	// TODO: wrap with controller to refrain from calling repo directly from handlers
 	authRepo.DeleteRefreshTokenByUserId(*userId, utils.FingerprintRequest(request))
 	// reset cookies
-	http.SetCookie(responseWriter, &http.Cookie{
-		Name:     utils.KEY_SESSION_TOKEN,
-		Value:    "",
-		Domain:   config.Env.WebDomain(),
-		Path:     "/",
-		Expires:  time.Unix(0, 0),
-		HttpOnly: true,
-		Secure:   false, //NOTE: for testing purposes only
-	})
-	http.SetCookie(responseWriter, &http.Cookie{
-		Name:     utils.KEY_REFRESH_TOKEN,
-		Value:    "",
-		Domain:   config.Env.WebDomain(),
-		Path:     "/auth/refresh",
-		Expires:  time.Unix(0, 0),
-		HttpOnly: true,
-		Secure:   false, //NOTE: for testing purposes only
-	})
+	utils.ClearTokenCookies(config, responseWriter, request)
+
 	a, _ := json.Marshal(map[string]bool{"logged out": true})
 	responseWriter.Write(a)
 }
@@ -161,47 +145,36 @@ func googleAuthCodeHandler(responseWriter http.ResponseWriter, request *http.Req
 
 	// create or merge customer
 	authRepo := repository.AuthRepo{DB: database}
-	customerRecord, err := authRepo.CreateOrMergeCustomer(profile.Email, profile.GivenName, profile.FamilyName, profile.Picture)
+	customerRecord, tokens, err := controllers.CreateOrMergeCustomer(
+		config, &authRepo, utils.FingerprintRequest(request),
+		profile.Email, profile.GivenName, profile.FamilyName, profile.Picture)
 	if err != nil {
-		log.Printf("main: creating/finding customer failed: %v", err)
+		log.Printf("main: failed to create new customer and issue tokens: %v", err)
 		http.Error(responseWriter, err.Error(), http.StatusInternalServerError)
 		return
-	}
-
-	// issue tokens
-	session, refresh, err := utils.GenerateTokens(config, customerRecord.ID.String())
-	if err != nil {
-		log.Printf("main: failed to generate tokens: %v", err)
-		http.Error(responseWriter, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// and store refresh in db
-	_, err = authRepo.UpsertRefreshToken(customerRecord.ID, utils.FingerprintRequest(request), refresh)
-	if err != nil {
-		log.Printf("main: failed to generate refresh token: %v", err)
-		// do not quit at this point as customer can still use this session
 	}
 
 	// set http-only jwk token cookie
-	utils.SetTokenCookies(config, session, refresh, responseWriter, request)
+	utils.SetTokenCookies(config, tokens.Session, tokens.Refresh, responseWriter, request)
 
 	customerJson, err := json.Marshal(customerRecord)
 	if err != nil {
 		log.Printf("main: failed to marshal customer: %v\n", err)
 		http.Error(responseWriter, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	responseWriter.Write(customerJson)
 }
 
 func authGetProfileCodeHandler(responseWriter http.ResponseWriter, request *http.Request) {
-	userId, err := utils.ValidateSession(config, responseWriter, request)
+	userId, err := utils.ValidateSession(config, request)
 	if err != nil {
 		http.Error(responseWriter, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	authRepo := repository.AuthRepo{DB: database}
+	// TODO: wrap with controller to refrain from calling repo directly from handlers
 	customerRecord, err := authRepo.GetCustomerInfo(*userId)
 	if err != nil {
 		log.Printf("main: failed to find customer: %v\n", err)
@@ -217,7 +190,7 @@ func authGetProfileCodeHandler(responseWriter http.ResponseWriter, request *http
 }
 
 func authRefreshCallHandler(responseWriter http.ResponseWriter, request *http.Request) {
-	_, refreshToken, err := utils.ValidateRefreshToken(config, responseWriter, request)
+	_, refreshToken, err := utils.ValidateRefreshToken(config, request)
 	if err != nil {
 		log.Printf("main: invalid token: %v", err)
 		http.Error(responseWriter, err.Error(), http.StatusForbidden)
@@ -225,7 +198,7 @@ func authRefreshCallHandler(responseWriter http.ResponseWriter, request *http.Re
 	}
 
 	authRepo := repository.AuthRepo{DB: database}
-	session, refresh, err := controllers.ReIssueTokens(config, &authRepo, refreshToken)
+	session, refresh, err := controllers.ReIssueTokens(config, &authRepo, utils.FingerprintRequest(request), refreshToken)
 	if err != nil {
 		log.Printf("main: failed to find refresh token: %v\n", err)
 		http.Error(responseWriter, err.Error(), http.StatusForbidden)

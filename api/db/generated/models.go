@@ -9,10 +9,11 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type RefreshToken struct {
-	ID          string
+type RefreshTokenJti struct {
+	ID          uuid.UUID
 	UserID      uuid.UUID
 	Fingerprint string
+	ExpiresAt   pgtype.Timestamp
 	CreatedAt   pgtype.Timestamp
 }
 

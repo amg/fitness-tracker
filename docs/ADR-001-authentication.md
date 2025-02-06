@@ -1,7 +1,7 @@
 # Context
 
 User authentication is required to store personalised data. 
-For ease of signup, Google OAuth is used.
+For ease of signup, Google OAuth is used to verify user, create a record and issue a pair of json web tokens.
 
 # Status
 
@@ -24,7 +24,7 @@ The signup flow is:
  1. web will get one off auth token from Google as part of oauth flow using the React Google lib
  2. web will pass one off token to the auth endpoint to request session/refresh tokens pair and create user account if required
 
-Additionally customer can have more than 1 active session. Each session will have unique pair of tokens and a repeatable fingerprint to identify the device.
+Additionally customer can have more than 1 active session. Each session will have unique pair of tokens and a fingerprint to loosely identify the device.
 
 ::: mermaid
 sequenceDiagram
@@ -40,6 +40,9 @@ sequenceDiagram
     Backend->>+Google: auth token
     activate Google
     Google->>-Backend: session/refresh tokens
+    Backend->>Backend: find matching or create new user
+    Backend->>Backend: issue a pair of tokens
+    Backend->>Backend: persist refresh token jti and expiration
     Backend->>-Web: session/refresh http-only cookies + user name
     activate Web
     Web->>Web: store user name in localstorage
@@ -50,6 +53,8 @@ sequenceDiagram
 
 When session expires or not available, refresh request is made by Web to get the session/refresh token pair again.
 Refresh token in http-only cookie will be used to attempt a session refresh.
+
+Refresh token will contain unique identifier (`jti`) to allow blacklisting in the database without storing the actual token (to avoid the need to encrypt it at rest). DB will store `jti` and `expires_at` to allow clean up in the future.
 
 ::: mermaid
 sequenceDiagram
@@ -62,7 +67,11 @@ sequenceDiagram
     Web->>Backend: get some data
     Backend->>Web: 401 session expired
     Web->>Backend: trying to get new token (refresh_token cookie)
-    Backend->>Backend: checking refresh token in db
+    Backend->>Backend: validate jwt refresh token
+    Note over Backend: invalid refresh token
+    Backend->>Web: failure 403
+    Note over Backend: valid refresh token
+    Backend->>Backend: checking refresh token jti in db
     Note over Backend: got no refresh token, sign out
     Backend->>Web: 403 sign-out
     Note over Backend: got refresh token
@@ -73,7 +82,3 @@ sequenceDiagram
     Note over Backend: valid
     Backend->>Web: data
 :::
-
-
-**Refs:**
-    https://stackoverflow.com/questions/10703532/whats-the-point-of-refresh-token
