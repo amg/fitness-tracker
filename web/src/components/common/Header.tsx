@@ -16,6 +16,7 @@ export default function Header() {
             <Toolbar>
             <nav>
                 <NavLink to="/">Home</NavLink>
+                <NavLink to="/record">Record</NavLink>
                 <NavLink to="/about">About</NavLink>
                 <span className="spacer" />
                 <NavLink to="/login">

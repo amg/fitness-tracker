@@ -7,6 +7,7 @@ import AccountPage from './account/AccountPage';
 import Header from './common/Header';
 import { Route, Routes } from 'react-router-dom';
 import { Box } from '@mui/material';
+import RecordExercisePage from './record/RecordExercisePage';
 
 declare global {
     interface Window {
@@ -41,6 +42,7 @@ function App() {
                 <Box m={2}>
                     <Routes>
                         <Route path="/" element={<HomePage />} />
+                        <Route path="/record" element={<RecordExercisePage />} />
                         <Route path="/login" element={<AccountPage />} />
                         <Route path="/about" element={<AboutPage />} />
                     </Routes>
