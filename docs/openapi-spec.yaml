@@ -1,0 +1,159 @@
+openapi: 3.0.3
+info:
+  title: Swagger Petstore - OpenAPI 3.0
+  description: |-
+    Api for Fitness Tracker
+  termsOfService: https://github.com/amg/fitness-tracker?tab=MIT-1-ov-file
+  license:
+    name: MIT
+    url: https://github.com/amg/fitness-tracker?tab=MIT-1-ov-file
+  version: 1.0.11
+externalDocs:
+  description: Find out more about Swagger
+  url: http://swagger.io
+servers:
+  - url: https://api.fitnesstracker.alexlearningcloud.dev
+tags:
+  - name: auth
+    description: Signup and authentication
+  - name: exercises
+    description: Create, list and delete exercises
+paths:
+  /auth/google:
+    post:
+      tags:
+        - auth
+      summary: Signup or authenticate with Google
+      description: Create a new user or find existing via Google account (email). Uses auth code to auth and retrieve profile.
+      operationId: signInWithGoogle
+      requestBody:
+        $ref: '#/components/requestBodies/GoogleAuthCode'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          headers: 
+            Set-Cookie:
+              schema: 
+                type: string
+                example: session_token=<jwt>; Path=/; HttpOnly; Secure; refresh_token=<jwt>; Path=/auth/refresh; HttpOnly; Secure
+        '400':
+          description: Invalid input
+        '422':
+          description: Validation exception
+  /auth/profile:
+    get:
+      tags:
+        - auth
+      summary: Get profile info
+      description: Profile info of the customer
+      operationId: getCustomerProfile
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: cookie
+          name: session_token
+          schema:
+            type: string
+            default: jwt
+          required:
+            true
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'          
+        '400':
+          description: Invalid status value
+  /auth/logout:
+    post:
+      tags:
+        - auth
+      summary: Logout customer
+      description: Clears tokens and logs out customer
+      operationId: logout
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: cookie
+          name: session_token
+          schema:
+            type: string
+            default: jwt
+          required:
+            true
+      responses:
+        '204':
+          description: successful operation
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Forbidden
+  /auth/refresh:
+    post:
+      tags:
+        - auth
+      summary: Refresh auth tokens
+      description: Returns session and refresh token cookies
+      operationId: refreshTokens
+      parameters:
+        - in: cookie
+          name: refresh_token
+          schema:
+            type: string
+            default: jwt
+          required:
+            true
+      responses:
+        '204':
+          description: successful operation
+        '403':
+          description: Forbidden
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 'f8a3f4ac-a87a-42ed-b614-bd90a9972a57'
+        firstName:
+          type: string
+          example: Vi
+        lastName:
+          type: string
+          example: Kiramman
+        pictureUrl:
+          type: string
+          example: https://images.app.goo.gl/CfmL5PwpvsdcUmjy8
+      required:
+        - id
+        - firstName
+        - lastName
+    AuthCode:
+      type: object
+      properties:
+        code:
+          type: string
+      required:
+        - code
+  requestBodies:
+    GoogleAuthCode:
+      description: One off code to exchange for accound creation and user info
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AuthCode'
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: session_token
