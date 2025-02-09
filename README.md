@@ -5,6 +5,7 @@
 - [Rough MVP](#rough-mvp)
 - [Technology](#technology)
   - [High level view](#high-level-view)
+  - [Swagger spec](#swagger-spec)
 - [Building](#building)
   - [Run on docker](#run-on-docker)
   - [Run on GCP](#run-on-gcp)
@@ -70,6 +71,10 @@ Schedule/Reminders:
 
 ### High level view
 ![High level view](./docs/high-level-arch.png)
+
+### Swagger spec
+
+[API spec](./docs/openapi-spec.yaml)
 
 ## Building<a name="building"></a>
 

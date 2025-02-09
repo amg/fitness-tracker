@@ -1,13 +1,13 @@
 openapi: 3.0.3
 info:
-  title: Swagger Petstore - OpenAPI 3.0
+  title: Swagger Fitness tracker
   description: |-
     Api for Fitness Tracker
   termsOfService: https://github.com/amg/fitness-tracker?tab=MIT-1-ov-file
   license:
     name: MIT
     url: https://github.com/amg/fitness-tracker?tab=MIT-1-ov-file
-  version: 1.0.11
+  version: 1.0.0
 externalDocs:
   description: Find out more about Swagger
   url: http://swagger.io
