@@ -16,6 +16,8 @@ COPY ./docs/high-level-arch.png /app/public/
 
 ARG API_BASE_URL
 ENV API_BASE_URL=$API_BASE_URL
+ARG NODE_API_BASE_URL
+ENV NODE_API_BASE_URL=${NODE_API_BASE_URL}
 
 # Make executable
 RUN chmod +x ./run_web.sh

@@ -14,18 +14,23 @@ type Handler = (req: Request, res: Response) => Promise<void>;
 type SQLHandler = (req: Request, res: Response, client: Client) => Promise<void>;
 
 dns.setDefaultResultOrder('ipv4first');
-
+console.log(`web: ${process.env.WEB_BASE_URL}`);
 const corsOptions: cors.CorsOptions = {
-  origin: `${process.env.WEB_BASE_URL ?? panic("WEB_BASE_URL is not specified")}`
+  origin: `${process.env.WEB_BASE_URL ?? panic("WEB_BASE_URL is not specified")}`,
+  allowedHeaders: ['Content-Type', 'Origin', 'Accept', 'googleTokens'],
+  credentials: true,
+  optionsSuccessStatus: 200
 };
+const port = process.env.NODE_API_PORT ?? panic("NODE_API_PORT is not specified");
 
 const app = express();
 app.use(cors(corsOptions));
 app.use(express.json())
 
-const port = process.env.NODE_API_PORT ?? panic("NODE_API_PORT is not specified");
+app.options('*',cors(corsOptions));
 
-app.get('/node/authenticated', authenticated(dbHandler(handlerGetExercises)));
+
+app.get('/node/exercises', authenticated(dbHandler(handlerGetExercises)));
 
 app.get('/node/*', authenticated(handlerRoot));
 app.get('/*', authenticated(handlerUnsupported));
