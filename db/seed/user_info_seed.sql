@@ -1,6 +1,6 @@
 DROP TABLE IF EXISTS user_info;
 
-EXEC SQL INCLUDE '../schema/user_info_schema.sql'
+EXEC SQL INCLUDE '../schema/user_info/user_info_schema.sql'
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 

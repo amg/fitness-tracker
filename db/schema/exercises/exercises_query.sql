@@ -4,7 +4,7 @@ WHERE id = $1 LIMIT 1;
 
 -- name: ListDefaultExercises :many
 SELECT * FROM exercise
-WHERE user_id = NULL
+WHERE user_id IS NULL
 ORDER BY id;
 
 -- name: ListExercisesForUser :many

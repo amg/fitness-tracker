@@ -15,4 +15,4 @@ sql:
         plugin: ts
         options:
           runtime: node
-          driver: postgres
+          driver: pg
