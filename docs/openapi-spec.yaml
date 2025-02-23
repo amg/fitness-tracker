@@ -116,6 +116,34 @@ paths:
           description: successful operation
         '403':
           description: Forbidden
+  /node/exercises:
+    get:
+      tags:
+        - exercises
+      summary: Get list of user's exercises
+      description: List of exercises (currently just returns default ones)
+      operationId: getExercises
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: cookie
+          name: session_token
+          schema:
+            type: string
+            default: jwt
+          required:
+            true
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Exercise'          
+        '400':
+          description: Invalid status value
 components:
   schemas:
     User:
@@ -145,6 +173,22 @@ components:
           type: string
       required:
         - code
+    Exercise:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Pushups
+        description:
+          type: string
+          example: How to do a pushup
+      required:
+        - id
+        - name
+        - description
   requestBodies:
     GoogleAuthCode:
       description: One off code to exchange for accound creation and user info
