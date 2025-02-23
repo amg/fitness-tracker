@@ -22,9 +22,10 @@ export default function ExerciseListCard(
                     }
                     title={<Typography align="left">{exercise.title}</Typography>}
                 />
-                <CardContent sx={{ height: '100%' }}>
+                <CardContent sx={{ height: '100%' }}>                    
                     <Typography variant="body2" sx={{
                         color: 'text.secondary',
+                        whiteSpace: 'pre-wrap',
                     }}>
                         {exercise.description}
                     </Typography>

@@ -48,6 +48,7 @@ services:
         - GOOGLE_CLIENT_CALLBACK_URL=${GOOGLE_CLIENT_CALLBACK_URL}
         - NODE_API_PORT=${NODE_API_PORT}
         - COOKIE_DOMAIN=${COOKIE_DOMAIN}
+        - WEB_BASE_URL=${WEB_BASE_URL}
         - FILE_KEY_PRIVATE=${FILE_KEY_PRIVATE}
         - FILE_KEY_PUBLIC=${FILE_KEY_PUBLIC}
         - POSTGRES_URL=${POSTGRES_URL}
@@ -75,6 +76,7 @@ services:
       dockerfile: Dockerfile-web
       args:
         - API_BASE_URL=${API_BASE_URL}
+        - NODE_API_BASE_URL=${NODE_API_BASE_URL}
       x-bake:
         platforms:
           - linux/amd64

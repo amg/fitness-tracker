@@ -2,7 +2,7 @@ import { Request } from 'express';
 import { environment } from './../services/env'
 import jwt from 'jsonwebtoken';
 
-const HEADER_JWT = "jwt_token"
+const HEADER_JWT = "session_token"
 
 /**
  * Checks that JWT token is present in cookies and returns true if valid

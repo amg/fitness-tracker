@@ -1,0 +1,20 @@
+version: "2"
+sql:
+  - engine: postgresql
+    queries:
+      - ../schema/user_info/user_info_query.sql
+      - ../schema/auth/auth_query.sql
+    schema:
+      - ../schema/user_info/user_info_schema.sql
+      - ../schema/auth/auth_schema.sql
+    gen:
+      go:
+        package: gendb
+        out: ../../api/db/generated
+        sql_package: pgx/v5
+        emit_pointers_for_null_types: true
+        overrides:
+          - db_type: uuid
+            go_type:
+              import: github.com/google/uuid
+              type: UUID

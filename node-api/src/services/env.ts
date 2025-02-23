@@ -46,7 +46,6 @@ async function loadFromFile(fileName: string): Promise<string> {
 }
 
 export async function environment(): Promise<Config> {
-    console.log("Getting environment");
     const env: string = process.env.ENV ?? panic("Environment is undefined");
     
     const googleClientId: string = process.env.GOOGLE_CLIENT_ID ?? fail("GOOGLE_CLIENT_ID is undefined");
@@ -68,7 +67,7 @@ export async function environment(): Promise<Config> {
 
             const jwtKeyPrivatePromise = loadFromFile(jwtKeyPrivate ?? fail("FILE_KEY_PRIVATE is undefined"));
             const jwtKeyPublicPromise = loadFromFile(jwtKeyPublic ?? fail("FILE_KEY_PUBLIC is undefined"));
-            
+
             return new Config({
                 googleClientId,
                 googleClientCallbackUrl,
@@ -116,7 +115,6 @@ export async function environment(): Promise<Config> {
                 postgresUser: postgresDbUser ?? fail("POSTGRES_USER is undefined"),
                 postgresPassword: postgresDbPwd ?? fail("POSTGRES_PASSWORD is undefined"),
             }
-
             return new Config({
                 googleClientId,
                 googleClientCallbackUrl,
