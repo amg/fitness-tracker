@@ -1,6 +1,11 @@
 DROP TABLE IF EXISTS exercise;
 
-EXEC SQL INCLUDE '../schema/exercises/exercises_schema.sql'
+CREATE TABLE exercise (
+	id BIGSERIAL UNIQUE PRIMARY KEY,
+	user_id uuid REFERENCES user_info (id),
+    name VARCHAR(50) NOT NULL,
+	description text NOT NULL
+);
 
 -- generic exercises
 INSERT INTO exercise (name, description)

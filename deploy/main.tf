@@ -24,6 +24,9 @@ module "lb-http" {
   managed_ssl_certificate_domains = ["web.fitnesstracker.alexlearningcloud.dev", "api.fitnesstracker.alexlearningcloud.dev"]
   https_redirect                  = true
 
+  url_map        = google_compute_url_map.main.self_link
+  create_url_map = false
+
   backends = {
     web = {
       description = null
@@ -79,6 +82,44 @@ resource "google_compute_region_network_endpoint_group" "api_neg" {
   region                = var.region
   cloud_run {
     service = google_cloud_run_v2_service.api.name
+  }
+}
+
+# Map services to the load balancer
+resource "google_compute_url_map" "main" {
+  name            = "url-map-main"
+  default_service = module.lb-http.backend_services.web.self_link
+
+  host_rule {
+    hosts        = ["web.fitnesstracker.alexlearningcloud.dev"]
+    path_matcher = "web"
+  }
+
+  host_rule {
+    hosts        = ["api.fitnesstracker.alexlearningcloud.dev"]
+    path_matcher = "api"
+  }
+
+  path_matcher {
+    name            = "web"
+    default_service = module.lb-http.backend_services.web.self_link
+  }
+
+  path_matcher {
+    name            = "api"
+    default_service = module.lb-http.backend_services.api.self_link
+  }
+
+  test {
+    host    = "web.fitnesstracker.alexlearningcloud.dev"
+    path    = "/"
+    service = module.lb-http.backend_services.web.id
+  }
+
+  test {
+    host    = "api.fitnesstracker.alexlearningcloud.dev"
+    path    = "/"
+    service = module.lb-http.backend_services.api.id
   }
 }
 

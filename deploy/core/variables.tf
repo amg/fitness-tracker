@@ -32,3 +32,8 @@ variable "postgres_password" {
   description = "PostgreSQL password to init in the Secrets manager"
   sensitive   = true
 }
+// from .secrets/.deploy.env
+variable "local_public_ip" {
+  type        = string
+  description = "Public IP of the local machine"
+}

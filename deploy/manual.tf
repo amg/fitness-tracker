@@ -24,31 +24,3 @@
 #     prevent_destroy = true
 #   }
 # }
-
-//------ LB rotutes
-
-# For now done manually, figure out how to attach this to the LB
-# resource "google_compute_url_map" "main" {
-#   name            = "url-map-main"
-#   default_service = google_compute_region_network_endpoint_group.web_neg.name
-
-#   host_rule {
-#     hosts        = ["web.fitnesstracker.alexlearningcloud.dev"]
-#     path_matcher = "web"
-#   }
-
-#   host_rule {
-#     hosts        = ["api.fitnesstracker.alexlearningcloud.dev"]
-#     path_matcher = "api"
-#   }
-
-#   path_matcher {
-#     name            = "web"
-#     default_service = google_compute_region_network_endpoint_group.web_neg.name
-#   }
-
-#   path_matcher {
-#     name            = "api"
-#     default_service = google_compute_region_network_endpoint_group.api_neg.name
-#   }
-# }
