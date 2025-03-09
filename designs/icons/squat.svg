@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<svg width="24" height="24" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" class="icon flat-color" data-name="Flat Color">
+ <g class="layer">
+  <title>Layer 1</title>
+  <path d="m14.49,7.86a1,1 0 0 0 -1.13,-0.86a1,1 0 0 0 -0.84,1l-3.95,0a1,1 0 0 0 0,2l4,0a1.42,1.42 0 0 0 0.2,0l0.66,4.65l-2.93,0.29a2,2 0 0 0 -1.41,0.8a1.94,1.94 0 0 0 -0.35,1.58l0.78,3.92a1,1 0 0 0 1,0.8l0.2,0a1,1 0 0 0 0.78,-1.18l-0.78,-3.91l4,-0.4a1,1 0 0 0 0.89,-1.13l-1.12,-7.56z" fill="rgb(0, 0, 0)" id="primary"/>
+  <path d="m14.5,16.5l0.21,0a1.5,1.5 0 0 0 1.29,-1.71l-1,-7a1.5,1.5 0 1 0 -3,0.42l1,7a1.51,1.51 0 0 0 1.5,1.29z" fill="#000000" id="secondary"/>
+  <circle cx="12.57" cy="5" data-name="primary" fill="rgb(0, 0, 0)" id="primary-2" r="3"/>
+ </g>
+</svg>

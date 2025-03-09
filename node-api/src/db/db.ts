@@ -3,8 +3,12 @@ import { environment } from './../services/env'
 
 export default async function client(): Promise<Client> {
     let config = await environment();
-    let connectionString = `postgres://${config.secEnv.postgresUser}:${config.secEnv.postgresPassword}@${config.env.postgresUrl}/${config.secEnv.postgresDbName}?sslmode=disable`
     return new Client({
-        connectionString: connectionString
+        user: config.secEnv.postgresUser,
+        database: config.secEnv.postgresDbName,
+        password: config.secEnv.postgresPassword,
+        port: 5432,
+        host: `/cloudsql/${config.env.postgresUrl!}`,
+        ssl: false
     });
 }

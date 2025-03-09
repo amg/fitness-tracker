@@ -1,7 +1,6 @@
 import fs from 'fs'
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
 import { panic } from './error'
-import { crc32 } from 'zlib';
 import { fail } from 'assert';
 import { createPrivateKey, createPublicKey, KeyObject } from "crypto";
 
@@ -14,7 +13,7 @@ export interface NonSecureEnv {
 	apiPort: string
 	webDomain: string
 	webBaseUrl: string
-	postgresUrl: string
+	postgresUrl: string | undefined
 }
 
 /**
@@ -53,7 +52,7 @@ export async function environment(): Promise<Config> {
     const apiPort: string = process.env.NODE_API_PORT ?? fail("NODE_API_PORT is undefined");
     const webDomain: string = process.env.COOKIE_DOMAIN ?? fail("COOKIE_DOMAIN is undefined");
     const webBaseUrl: string = process.env.WEB_BASE_URL ?? fail("WEB_BASE_URL is undefined");
-    let postgresUrl: string;
+    let postgresUrl: string | undefined;
 
     switch (env) {
         case "dev":
@@ -86,21 +85,18 @@ export async function environment(): Promise<Config> {
             break;
         case "staging": 
             const googleProjectId: string = process.env.GOOGLE_PROJECT_ID ?? fail("GOOGLE_PROJECT_ID is undefined");
-            postgresUrl = "" 
+            postgresUrl = process.env.DB_INSTANCE_CONNECTION_NAME;
+            console.log(`DB_INSTANCE_CONNECTION_NAME: ${postgresUrl}`);
             const secretmanagerClient = new SecretManagerServiceClient();
             
             async function accessSecret(key: string) {
                 const [version] = await secretmanagerClient.accessSecretVersion({
                     name: `projects/${googleProjectId}/secrets/${key}/versions/latest`,
                 });
-                const crc32c = crc32(version.payload?.data ?? "")
-                if (crc32c != version.payload?.dataCrc32c) {
-                    fail(`Data corruption detected retrieving secret ${key}`)
-                }
                 return version.payload?.data?.toString();
             }
-            const privateKeyPromise = accessSecret("FILE_KEY_PRIVATE");
-            const publicKeyPromise = accessSecret("FILE_KEY_PUBLIC");
+            const privateKeyPromise = accessSecret("JWT_KEY_PRIVATE");
+            const publicKeyPromise = accessSecret("JWT_KEY_PUBLIC");
             const postgresDbNamePromise = accessSecret("POSTGRES_DBNAME");
             const postgresDbUserPromise = accessSecret("POSTGRES_USER");
             const postgresDbPwdPromise = accessSecret("POSTGRES_PASSWORD");
@@ -109,8 +105,8 @@ export async function environment(): Promise<Config> {
 
             const secEnv = {
                 googleClientSecret: "",
-                jwtKeyPrivate: createPrivateKey(privateKey ?? fail("FILE_KEY_PRIVATE is undefined")),
-                jwtKeyPublic: createPublicKey(publicKey ?? fail("FILE_KEY_PUBLIC is undefined")),
+                jwtKeyPrivate: createPrivateKey(privateKey ?? fail("JWT_KEY_PRIVATE is undefined")),
+                jwtKeyPublic: createPublicKey(publicKey ?? fail("JWT_KEY_PUBLIC is undefined")),
                 postgresDbName: postgresDbName ?? fail("POSTGRES_DBNAME is undefined"),
                 postgresUser: postgresDbUser ?? fail("POSTGRES_USER is undefined"),
                 postgresPassword: postgresDbPwd ?? fail("POSTGRES_PASSWORD is undefined"),

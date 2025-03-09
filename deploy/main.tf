@@ -59,6 +59,22 @@ module "lb-http" {
       log_config = {
         enable = false
       }
+    },
+    node-api = {
+      description = null
+      groups = [
+        {
+          group = google_compute_region_network_endpoint_group.node_api_neg.id
+        }
+      ]
+      enable_cdn = false
+
+      iap_config = {
+        enable = false
+      }
+      log_config = {
+        enable = false
+      }
     }
   }
 }
@@ -85,6 +101,17 @@ resource "google_compute_region_network_endpoint_group" "api_neg" {
   }
 }
 
+resource "google_compute_region_network_endpoint_group" "node_api_neg" {
+  provider              = google-beta
+  project               = var.project_id
+  name                  = "cloudrun-node-api-neg"
+  network_endpoint_type = "SERVERLESS"
+  region                = var.region
+  cloud_run {
+    service = google_cloud_run_v2_service.node-api.name
+  }
+}
+
 # Map services to the load balancer
 resource "google_compute_url_map" "main" {
   name            = "url-map-main"
@@ -108,6 +135,15 @@ resource "google_compute_url_map" "main" {
   path_matcher {
     name            = "api"
     default_service = module.lb-http.backend_services.api.self_link
+
+    path_rule {
+      paths   = ["/auth/*"]
+      service = module.lb-http.backend_services.api.self_link
+    }
+    path_rule {
+      paths   = ["/node/*"]
+      service = module.lb-http.backend_services.node-api.self_link
+    }
   }
 
   test {
@@ -177,6 +213,37 @@ resource "google_cloud_run_v2_service" "api" {
   deletion_protection = false
 }
 
+# Deploy node-api to Cloud Run
+resource "google_cloud_run_v2_service" "node-api" {
+  name     = "node-api"
+  location = var.region
+  ingress  = "INGRESS_TRAFFIC_ALL"
+
+  template {
+    service_account = google_service_account.api.email
+    scaling {
+      max_instance_count = 2
+    }
+    containers {
+      image = "gcr.io/${var.project_id}/staging-node-api"
+
+      # Sets a environment variable for instance connection name
+      env {
+        name  = "DB_INSTANCE_CONNECTION_NAME"
+        value = "${var.project_id}:${var.region}:${var.resource_db_instance_name}"
+      }
+    }
+    volumes {
+      name = "cloudsql"
+      cloud_sql_instance {
+        instances = ["${var.project_id}:${var.region}:${var.resource_db_instance_name}"]
+      }
+    }
+  }
+
+  deletion_protection = false
+}
+
 # Create public access
 data "google_iam_policy" "noauth" {
   binding {
@@ -210,6 +277,14 @@ resource "google_cloud_run_service_iam_policy" "api_noauth" {
   location    = google_cloud_run_v2_service.api.location
   project     = google_cloud_run_v2_service.api.project
   service     = google_cloud_run_v2_service.api.name
+  policy_data = data.google_iam_policy.noauth.policy_data
+}
+
+# Enable public access on Cloud Run service
+resource "google_cloud_run_service_iam_policy" "node_api_noauth" {
+  location    = google_cloud_run_v2_service.node-api.location
+  project     = google_cloud_run_v2_service.node-api.project
+  service     = google_cloud_run_v2_service.node-api.name
   policy_data = data.google_iam_policy.noauth.policy_data
 }
 
